@@ -6,11 +6,21 @@
 </head>
 <body>
 
-<a href="{{ sqrl.url }}">
-    <img src="{% url 'sqrl:qr-image' %}?url={{ sqrl.url|urlencode }}">
-</a>
-<br>
-{{ sqrl.url }}
+<p>
+    <a href="{{ sqrl.url }}">
+        <img src="{% url 'sqrl:qr-image' %}?url={{ sqrl.url|urlencode }}">
+    </a>
+    <br>
+    {{ sqrl.url }}
+</p>
+
+
+{% if user.is_authenticated %}
+    <p>
+        You are logged in. <a href="{% url 'logout' %}">Logout</a>.
+    </p>
+{% endif %}
+
 
 </body>
 </html>

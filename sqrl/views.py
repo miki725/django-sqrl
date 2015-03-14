@@ -6,7 +6,11 @@ from collections import OrderedDict
 from pprint import pformat
 
 from django.conf import settings
-from django.contrib.auth import login
+from django.contrib.auth import (
+    BACKEND_SESSION_KEY,
+    HASH_SESSION_KEY,
+    SESSION_KEY,
+)
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import Http404, HttpResponse, QueryDict
 from django.http.response import JsonResponse
@@ -76,15 +80,12 @@ class SQRLHTTPResponse(HttpResponse):
 
         self.add_debug_headers(normalized_data)
 
-        log.debug('Response status code is {}'.format(self.status_code))
-        log.debug('Response headers:\n{}'
-                  ''.format(pformat(sorted(self._headers.values()))))
+        log.debug('Response encoded data:\n{}'
+                  ''.format(content))
         log.debug('Response data:\n{}'
                   ''.format(pformat(normalized_data)))
         log.debug('Response TIF breakdown:\n{}'
                   ''.format(pformat(TIF(int(data['tif'], 16)).breakdown())))
-        log.debug('Response encoded data:\n{}'
-                  ''.format(content))
 
     def sign_response(self, nut, data):
         if not nut:
@@ -132,18 +133,6 @@ class SQRLAuthView(View):
     def render_to_response(self, data=None):
         return SQRLHTTPResponse(self.nut, self.get_server_data(data))
 
-    @property
-    def session(self):
-        if hasattr(self, '_session'):
-            return self._session
-
-        self._session = SessionMiddleware().SessionStore(self.nut.session_key)
-
-        return self._session
-
-    def login(self):
-        login(self.request, self.nut.user)
-
     def do_ips_match(self):
         if get_user_ip(self.request) == self.nut.ip_address:
             self.tif = self.tif.update(TIF.IP_MATCH)
@@ -173,14 +162,10 @@ class SQRLAuthView(View):
 
         return self.nut
 
-    def associate_identity(self):
-        self.identity = SQRLIdentity.objects.create(
-            public_key=Base64.encode(self.payload_form['client']['idk']),
-            verify_unlock_key=Base64.encode(self.payload_form['client']['vuk']),
-            server_unlock_key=Base64.encode(self.payload_form['client']['suk']),
-        )
-
     def post(self, request, *args, **kwargs):
+        log.debug('-' * 50)
+        log.debug('Raw request body:\n{}'.format(request.body))
+
         # in case content-type is not given in which case
         # request.POST will be empty in which case manually parse
         # raw request body
@@ -214,12 +199,15 @@ class SQRLAuthView(View):
         log.debug('Request payload successfully parsed and validated:\n{}'
                   ''.format(pformat(self.payload_form.cleaned_data)))
 
+        self.client = self.payload_form.cleaned_data['client']
+
+        self.session = None
         self.identity = self.payload_form.identity
         self.previous_identity = self.payload_form.previous_identity
         self.do_ids_match()
         self.is_disabled()
 
-        cmds = [getattr(self, i, None) for i in self.payload_form.cleaned_data['client']['cmd']]
+        cmds = [getattr(self, i, None) for i in self.client['cmd']]
 
         if not all(cmds):
             raise TIFException(TIF.COMMAND_FAILED | TIF.NOT_SUPPORTED)
@@ -227,16 +215,56 @@ class SQRLAuthView(View):
         for cmd in cmds:
             cmd()
 
+        self.finalize()
+
         return self.render_to_response()
 
     def query(self):
         pass
 
     def ident(self):
-        pass
+        self.create_or_update_identity()
+        session = SessionMiddleware().SessionStore(self.nut.session_key)
+
+        user = self.identity.user
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+        session_auth_hash = user.get_session_auth_hash()
+
+        session[SESSION_KEY] = user.pk
+        session[BACKEND_SESSION_KEY] = user.backend
+        session[HASH_SESSION_KEY] = session_auth_hash
+
+        self.session = session
 
     def disable(self):
         pass
 
     def enable(self):
         pass
+
+    def finalize(self):
+        if self.identity:
+            self.identity.save()
+        if self.session:
+            self.session.save()
+
+    def create_or_update_identity(self):
+        if hasattr(self, '_identity_updated'):
+            return self.identity
+
+        if not self.identity:
+            self.identity = SQRLIdentity()
+            # TODO Need a way to associate user with SQRL identity.
+            # maybe need to redirect to different page.
+            self.identity.user_id = 1
+
+        self.identity.public_key = Base64.encode(self.client['idk'])
+        self.identity.is_only_sqrl = 'sqrlonly' in self.client['opt']
+
+        if self.client['vuk']:
+            self.identity.verify_unlock_key = Base64.encode(self.client['vuk'])
+        if self.client['suk']:
+            self.identity.server_unlock_key = Base64.encode(self.client['suk'])
+
+        return self.identity

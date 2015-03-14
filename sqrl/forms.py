@@ -25,6 +25,7 @@ class AuthQueryDictForm(forms.Form):
 class ClientForm(forms.Form):
     ver = forms.IntegerField(label='Version', min_value=1, max_value=1)
     cmd = TildeMultipleValuesField(label='Command')
+    opt = TildeMultipleValuesField(label='Options', required=False)
     idk = Base64Field(label='Identity Key')
     pidk = Base64Field(label='Previous Identity Key', required=False)
     suk = Base64Field(label='Server Unlock Key', required=False)
@@ -126,10 +127,28 @@ class RequestForm(forms.Form):
 
         return urs
 
+    def _clean_client_cmd(self):
+        client = self.cleaned_data['client']
+        cmds = client['cmd']
+
+        for cmd in cmds:
+            method_name = '_clean_client_cmd_{}'.format(cmd)
+            if hasattr(self, method_name):
+                getattr(self, method_name)(client)
+
+    def _clean_client_cmd_ident(self, client):
+        if all((not self.identity,
+                any((not client.get('suk'),
+                     not client.get('vuk'))))):
+            raise forms.ValidationError(
+                'Missing suk or vuk which are required when creating new identity'
+            )
+
     def clean(self):
         cleaned_data = super(RequestForm, self).clean()
 
         self.get_identities()
+        self._clean_client_cmd()
         self._clean_urs()
 
         return cleaned_data
@@ -144,4 +163,4 @@ class RequestForm(forms.Form):
 
     def get_identities(self):
         self.identity = self._get_identity(self.cleaned_data['client']['idk'])
-        self.previous_identity = self._get_identity(self.cleaned_data['client']['pidk'])
+        self.previous_identity = self._get_identity(self.cleaned_data['client'].get('pidk'))
