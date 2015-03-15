@@ -141,7 +141,24 @@ class RequestForm(forms.Form):
                 any((not client.get('suk'),
                      not client.get('vuk'))))):
             raise forms.ValidationError(
-                'Missing suk or vuk which are required when creating new identity'
+                'Missing suk or vuk which are required when creating new identity.'
+            )
+
+    def _clean_client_cmd_disable(self, client):
+        if not self.identity:
+            raise forms.ValidationError(
+                'Must have identity associated in order to disable SQRL.'
+            )
+
+    def _clean_client_cmd_enable(self, client):
+        if not self.identity:
+            raise forms.ValidationError(
+                'Must have identity associated in order to enable SQRL.'
+            )
+
+        if not self.cleaned_data.get('urs'):
+            raise forms.ValidationError(
+                'Must supply urs (unlock request signature) to enable SQRL access.'
             )
 
     def clean(self):

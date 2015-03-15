@@ -144,12 +144,16 @@ class SQRLAuthView(View):
         if self.previous_identity:
             self.tif = self.tif.update(TIF.PREVIOUS_ID_MATCH)
 
-    def is_disabled(self):
+    def is_sqrl_disabled(self):
+        self.is_disabled = False
+
         if self.identity and not self.identity.is_enabled:
             self.tif = self.tif.update(TIF.SQRL_DISABLED)
+            self.is_disabled = True
 
         if self.previous_identity and not self.previous_identity.is_enabled:
             self.tif = self.tif.update(TIF.SQRL_DISABLED)
+            self.is_disabled = True
 
     def get_nut_or_error(self):
         self.nut = Nut.objects.filter(nonce=self.nut_value).first()
@@ -205,7 +209,7 @@ class SQRLAuthView(View):
         self.identity = self.payload_form.identity
         self.previous_identity = self.payload_form.previous_identity
         self.do_ids_match()
-        self.is_disabled()
+        self.is_sqrl_disabled()
 
         cmds = [getattr(self, i, None) for i in self.client['cmd']]
 
@@ -223,6 +227,9 @@ class SQRLAuthView(View):
         pass
 
     def ident(self):
+        if self.is_disabled:
+            return
+
         self.create_or_update_identity()
         session = SessionMiddleware().SessionStore(self.nut.session_key)
 
@@ -238,10 +245,12 @@ class SQRLAuthView(View):
         self.session = session
 
     def disable(self):
-        pass
+        self.create_or_update_identity()
+        self.identity.is_enabled = False
 
     def enable(self):
-        pass
+        self.create_or_update_identity()
+        self.identity.is_enabled = True
 
     def finalize(self):
         if self.identity:
