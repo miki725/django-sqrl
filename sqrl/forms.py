@@ -2,6 +2,8 @@
 from __future__ import print_function, unicode_literals
 
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.utils.crypto import get_random_string
 
 from .fields import (
     Base64ConditionalPairsField,
@@ -181,3 +183,21 @@ class RequestForm(forms.Form):
     def get_identities(self):
         self.identity = self._get_identity(self.cleaned_data['client']['idk'])
         self.previous_identity = self._get_identity(self.cleaned_data['client'].get('pidk'))
+
+
+class RandomPasswordUserCreationForm(UserCreationForm):
+    def __init__(self, *args, **kwargs):
+        super(RandomPasswordUserCreationForm, self).__init__(*args, **kwargs)
+        for field in self.fields:
+            if 'password' in field:
+                self.fields.pop(field)
+
+    def clean(self):
+        cleaned_data = super(RandomPasswordUserCreationForm, self).clean()
+
+        # Create artificial password.
+        # If user will want to use non-SQRL password,
+        # they will need to reset the password.
+        cleaned_data['password1'] = get_random_string(length=25)
+
+        return cleaned_data

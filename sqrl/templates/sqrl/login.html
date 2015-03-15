@@ -17,7 +17,14 @@
 
 {% if user.is_authenticated %}
     <p>
-        You are logged in. <a href="{% url 'logout' %}">Logout</a>.
+        You are logged in as {{ user.username }}. <a href="{% url 'logout' %}">Logout</a>.
+    </p>
+{% endif %}
+
+{% if sqrl_identity %}
+    <p>
+        You need to complete registration
+        <a href="{% url 'sqrl-complete-registration' %}">here</a>.
     </p>
 {% endif %}
 

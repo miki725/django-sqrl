@@ -10,14 +10,22 @@ from django.contrib.auth import (
     BACKEND_SESSION_KEY,
     HASH_SESSION_KEY,
     SESSION_KEY,
+    login,
 )
 from django.contrib.sessions.middleware import SessionMiddleware
+from django.core import serializers
 from django.http import Http404, HttpResponse, QueryDict
 from django.http.response import JsonResponse
+from django.shortcuts import redirect
 from django.views.generic import FormView, TemplateView, View
 
 from .exceptions import TIF, TIFException
-from .forms import AuthQueryDictForm, GenerateQRForm, RequestForm
+from .forms import (
+    AuthQueryDictForm,
+    GenerateQRForm,
+    RandomPasswordUserCreationForm,
+    RequestForm,
+)
 from .models import Nut, SQRLIdentity
 from .sqrl import SQRLInitialization
 from .utils import Base64, Encoder, QRGenerator, get_user_ip, sign_data
@@ -231,18 +239,27 @@ class SQRLAuthView(View):
             return
 
         self.create_or_update_identity()
-        session = SessionMiddleware().SessionStore(self.nut.session_key)
+        self.session = SessionMiddleware().SessionStore(self.nut.session_key)
 
-        user = self.identity.user
-        user.backend = 'django.contrib.auth.backends.ModelBackend'
+        # user is already associated with identity
+        # so we can login the user
+        if self.identity.user_id:
+            user = self.identity.user
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
 
-        session_auth_hash = user.get_session_auth_hash()
+            session_auth_hash = user.get_session_auth_hash()
 
-        session[SESSION_KEY] = user.pk
-        session[BACKEND_SESSION_KEY] = user.backend
-        session[HASH_SESSION_KEY] = session_auth_hash
+            self.session[SESSION_KEY] = user.pk
+            self.session[BACKEND_SESSION_KEY] = user.backend
+            self.session[HASH_SESSION_KEY] = session_auth_hash
 
-        self.session = session
+        # user was not found so lets save identity information in session
+        # so that we can complete user registration
+        else:
+            serialized = serializers.serialize('json', [self.identity])
+            self.session['_sqrl_identity'] = serialized
+            log.debug('Storing sqrl identity in session to complete registration:\n{}'
+                      ''.format(pformat(json.loads(serialized)[0]['fields'])))
 
     def disable(self):
         self.create_or_update_identity()
@@ -253,7 +270,7 @@ class SQRLAuthView(View):
         self.identity.is_enabled = True
 
     def finalize(self):
-        if self.identity:
+        if self.identity and self.identity.user_id:
             self.identity.save()
         if self.session:
             self.session.save()
@@ -264,9 +281,6 @@ class SQRLAuthView(View):
 
         if not self.identity:
             self.identity = SQRLIdentity()
-            # TODO Need a way to associate user with SQRL identity.
-            # maybe need to redirect to different page.
-            self.identity.user_id = 1
 
         self.identity.public_key = Base64.encode(self.client['idk'])
         self.identity.is_only_sqrl = 'sqrlonly' in self.client['opt']
@@ -277,3 +291,37 @@ class SQRLAuthView(View):
             self.identity.server_unlock_key = Base64.encode(self.client['suk'])
 
         return self.identity
+
+
+class UserCreationView(FormView):
+    form_class = RandomPasswordUserCreationForm
+    template_name = 'sqrl/register.html'
+
+    def check_session_for_sqrl_identity(self):
+        if '_sqrl_identity' not in self.request.session:
+            raise Http404
+
+    def get(self, request, *args, **kwargs):
+        self.check_session_for_sqrl_identity()
+        return super(UserCreationView, self).get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        self.check_session_for_sqrl_identity()
+        return super(UserCreationView, self).post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        try:
+            identity = next(iter(serializers.deserialize(
+                'json', self.request.session.pop('_sqrl_identity')
+            ))).object
+        except:
+            return HttpResponse(status=500)
+
+        user = form.save()
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
+        identity.user = user
+        identity.save()
+
+        login(self.request, user)
+
+        return redirect('sqrl:login')

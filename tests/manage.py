@@ -5,8 +5,8 @@ import os
 import sys
 
 
-sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..')))
-sys.path.append(os.getcwd())
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, '..', '..')))
+sys.path.insert(0, os.getcwd())
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.settings")
