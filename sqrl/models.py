@@ -4,6 +4,7 @@ from __future__ import print_function, unicode_literals
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager as _UserManager
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 from .utils import generate_nonce
 
@@ -39,6 +40,7 @@ class NutManager(models.Manager):
         return self.create(session_key=session_key, **kwargs)
 
 
+@python_2_unicode_compatible
 class Nut(models.Model):
     nonce = models.CharField(max_length=43, unique=True, db_index=True, primary_key=True)
     session_key = models.CharField(max_length=32, unique=True, db_index=True)
@@ -46,6 +48,9 @@ class Nut(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     objects = NutManager()
+
+    def __str__(self):
+        return self.nonce
 
     def renew_nonce(self):
         self.nonce = generate_nonce()

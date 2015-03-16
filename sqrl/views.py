@@ -14,8 +14,8 @@ from django.contrib.auth import (
 )
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core import serializers
-from django.http import Http404, HttpResponse, QueryDict
-from django.http.response import JsonResponse
+from django.core.urlresolvers import reverse
+from django.http import Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import redirect
 from django.views.generic import FormView, TemplateView, View
 
@@ -30,6 +30,8 @@ from .models import Nut, SQRLIdentity
 from .sqrl import SQRLInitialization
 from .utils import Base64, Encoder, QRGenerator, get_user_ip, sign_data
 
+
+SQRL_IDENTITY_SESSION_KEY = '_sqrl_identity'
 
 log = logging.getLogger(__name__)
 
@@ -68,10 +70,12 @@ class SQRLQRGeneratorView(FormView):
         return HttpResponse(image, content_type='image/png')
 
 
-class SQRLCheckView(View):
+class SQRLStatusView(View):
     def post(self, request, *args, **kwargs):
         return JsonResponse({
             'is_logged_in': request.user.is_authenticated(),
+            'must_complete_registration': SQRL_IDENTITY_SESSION_KEY in request.session,
+            'registration_uri': reverse('sqrl:complete-registration'),
         })
 
 
@@ -257,7 +261,7 @@ class SQRLAuthView(View):
         # so that we can complete user registration
         else:
             serialized = serializers.serialize('json', [self.identity])
-            self.session['_sqrl_identity'] = serialized
+            self.session[SQRL_IDENTITY_SESSION_KEY] = serialized
             log.debug('Storing sqrl identity in session to complete registration:\n{}'
                       ''.format(pformat(json.loads(serialized)[0]['fields'])))
 
@@ -293,26 +297,26 @@ class SQRLAuthView(View):
         return self.identity
 
 
-class UserCreationView(FormView):
+class SQRLCompleteRegistrationView(FormView):
     form_class = RandomPasswordUserCreationForm
     template_name = 'sqrl/register.html'
 
     def check_session_for_sqrl_identity(self):
-        if '_sqrl_identity' not in self.request.session:
+        if SQRL_IDENTITY_SESSION_KEY not in self.request.session:
             raise Http404
 
     def get(self, request, *args, **kwargs):
         self.check_session_for_sqrl_identity()
-        return super(UserCreationView, self).get(request, *args, **kwargs)
+        return super(SQRLCompleteRegistrationView, self).get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         self.check_session_for_sqrl_identity()
-        return super(UserCreationView, self).post(request, *args, **kwargs)
+        return super(SQRLCompleteRegistrationView, self).post(request, *args, **kwargs)
 
     def form_valid(self, form):
         try:
             identity = next(iter(serializers.deserialize(
-                'json', self.request.session.pop('_sqrl_identity')
+                'json', self.request.session.pop(SQRL_IDENTITY_SESSION_KEY)
             ))).object
         except:
             return HttpResponse(status=500)

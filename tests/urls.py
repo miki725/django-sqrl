@@ -5,7 +5,6 @@ from django.conf.urls import include, patterns, url
 from django.contrib import admin
 from django.contrib.auth.views import logout
 
-from sqrl.views import UserCreationView
 from sqrl.urls import urlpatterns as sqrl_urlpatterns
 
 
@@ -14,5 +13,4 @@ urlpatterns = patterns(
     url(r'^admin/', include(admin.site.urls)),
     url(r'^sqrl/', include(sqrl_urlpatterns, namespace='sqrl')),
     url(r'^logout/', logout, {'next_page': 'sqrl:login'}, name='logout'),
-    url(r'^register/complete/', UserCreationView.as_view(), name='sqrl-complete-registration'),
 )
