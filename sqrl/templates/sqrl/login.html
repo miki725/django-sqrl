@@ -8,13 +8,13 @@
 <body>
 
 
-{% sqrl_nut as sqrl_nut %}
+{% sqrl as sqrl %}
 <p>
-    <a href="{{ sqrl_nut.url }}">
-        <img src="{% url 'sqrl:qr-image' %}?url={{ sqrl_nut.url|urlencode }}">
+    <a href="{{ sqrl.url }}">
+        <img src="{% sqrl_qr_image_url sqrl %}">
     </a>
     <br>
-    {{ sqrl_nut.url }}
+    {{ sqrl.url }}
 </p>
 
 
