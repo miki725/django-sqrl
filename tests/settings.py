@@ -27,7 +27,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.static',
     'django.core.context_processors.tz',
     'django.contrib.messages.context_processors.messages',
-    'sqrl.context_processors.sqrl',
 )
 
 INSTALLED_APPS = (
@@ -37,9 +36,11 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
-    'sqrl',
     'django_extensions',
     'sslserver',
+
+    'sqrl',
+    'tests',
 )
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'

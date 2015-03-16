@@ -5,6 +5,7 @@ import logging
 from collections import OrderedDict
 from pprint import pformat
 
+from braces.views._access import LoginRequiredMixin
 from django.conf import settings
 from django.contrib.auth import (
     BACKEND_SESSION_KEY,
@@ -245,9 +246,15 @@ class SQRLAuthView(View):
         self.create_or_update_identity()
         self.session = SessionMiddleware().SessionStore(self.nut.session_key)
 
+        # user is already logged in
+        # so simply associate identity with the user
+        if all((self.session.get(i) for i in
+                [SESSION_KEY, BACKEND_SESSION_KEY, HASH_SESSION_KEY])):
+            self.identity.user_id = self.session.get(SESSION_KEY)
+
         # user is already associated with identity
         # so we can login the user
-        if self.identity.user_id:
+        elif self.identity.user_id:
             user = self.identity.user
             user.backend = 'django.contrib.auth.backends.ModelBackend'
 
@@ -329,3 +336,7 @@ class SQRLCompleteRegistrationView(FormView):
         login(self.request, user)
 
         return redirect('sqrl:login')
+
+
+class SQRLAssociateIdentityView(LoginRequiredMixin, TemplateView):
+    template_name = 'sqrl/associate_identity.html'

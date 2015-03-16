@@ -1,0 +1,34 @@
+{% extends "sqrl/sqrl_base.html" %}
+{% load sqrl %}
+
+{% block title %}Associate SQRL Identity{% endblock %}
+
+{% block content %}
+    <h1>Associate SQRL Identity with your account.</h1>
+
+    {% if user.sqrl_identity %}
+        <p>
+            SQRL identity is already associated with your account.
+        </p>
+    {% endif %}
+
+    <p>
+        To associate your SQRL identity with your account,
+        simply login via SQRL using the information below.
+    </p>
+
+    <p>
+        {% sqrl as sqrl %}
+        <a href="{{ sqrl.url }}">
+            <img src="{% sqrl_qr_image_url sqrl %}">
+        </a>
+    </p>
+{% endblock %}
+
+
+{% comment %}
+**sqrl/associate.html**
+Used to associate SQRL identity with already logged in user account.
+No special variables are passed in the context for the association
+to work. All necessary data should already be in the context.
+{% endcomment %}
