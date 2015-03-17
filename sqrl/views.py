@@ -28,7 +28,6 @@ from .forms import (
     RequestForm,
 )
 from .models import Nut, SQRLIdentity
-from .sqrl import SQRLInitialization
 from .utils import Base64, Encoder, QRGenerator, get_user_ip, sign_data
 
 
@@ -65,11 +64,14 @@ class SQRLQRGeneratorView(FormView):
 
 class SQRLStatusView(View):
     def post(self, request, *args, **kwargs):
-        return JsonResponse({
+        data = {
             'is_logged_in': request.user.is_authenticated(),
-            'must_complete_registration': SQRL_IDENTITY_SESSION_KEY in request.session,
-            'registration_uri': reverse('sqrl:complete-registration'),
-        })
+            'registration': {
+                'is_pending': SQRL_IDENTITY_SESSION_KEY in request.session,
+                'uri': reverse('sqrl:complete-registration'),
+            }
+        }
+        return JsonResponse(data)
 
 
 class SQRLHTTPResponse(HttpResponse):
