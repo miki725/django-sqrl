@@ -1,36 +1,31 @@
+{% extends "sqrl/sqrl_base.html" %}
 {% load sqrl %}
-<!DOCTYPE html>
-<html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title></title>
-</head>
-<body>
 
+{% block title %}Login via SQRL{% endblock %}
 
-{% sqrl as sqrl %}
-<p>
-    <a href="{{ sqrl.url }}">
-        <img src="{% sqrl_qr_image_url sqrl %}">
-    </a>
-    <br>
-    {{ sqrl.url }}
-</p>
+{% block content %}
+    <h1>Login</h1>
 
-
-{% if user.is_authenticated %}
     <p>
-        You are logged in as {{ user.username }}. <a href="{% url 'logout' %}">Logout</a>.
+        Please use via SQRL using the information below.
     </p>
-{% endif %}
 
-{% if sqrl_identity %}
     <p>
-        You need to complete registration
-        <a href="{% url 'sqrl-complete-registration' %}">here</a>.
+        {% sqrl as sqrl %}
+        <a href="{{ sqrl.url }}">
+            <img src="{% sqrl_qr_image_url sqrl %}">
+        </a>
     </p>
-{% endif %}
+{% endblock %}
 
 
-</body>
-</html>
+{% comment %}
+**sqrl/login.html**
+This is SQRL-only login page.
+No special variables are passed in the context for the login to work.
+All necessary data should already be in the context.
+
+Please note again that this template is for SQRL-exclusive logins.
+If you would like to add SQRL login to an existing login page,
+you should rather adjust that template as it is probably way more involved.
+{% endcomment %}

@@ -40,14 +40,6 @@ log = logging.getLogger(__name__)
 class SQRLLoginView(TemplateView):
     template_name = 'sqrl/login.html'
 
-    def get_context_data(self, **kwargs):
-        context = super(SQRLLoginView, self).get_context_data(**kwargs)
-        sqrl = SQRLInitialization(self.request)
-        context.update({
-            'sqrl': sqrl,
-        })
-        return context
-
 
 class SQRLQRGeneratorView(FormView):
     form_class = GenerateQRForm
