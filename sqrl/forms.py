@@ -139,11 +139,25 @@ class RequestForm(forms.Form):
                 getattr(self, method_name)(client)
 
     def _clean_client_cmd_ident(self, client):
-        if all((not self.identity,
-                any((not client.get('suk'),
-                     not client.get('vuk'))))):
+        suk = client.get('suk')
+        vuk = client.get('vuk')
+
+        if not self.identity and not all([suk, vuk]):
             raise forms.ValidationError(
                 'Missing suk or vuk which are required when creating new identity.'
+            )
+
+        if self.identity and any([suk, vuk]):
+            raise forms.ValidationError(
+                'Cannot send suk or vuk when SQRL identity is already associated'
+            )
+
+        if all((not self.identity,
+                self.previous_identity,
+                not self.cleaned_data.get('urs'))):
+            raise forms.ValidationError(
+                'Must supply urs (unlock request signature) when switching identities '
+                'from previously stored identity (pidk) to new current identity (idk).'
             )
 
     def _clean_client_cmd_disable(self, client):

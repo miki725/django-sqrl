@@ -287,12 +287,24 @@ class SQRLAuthView(View):
         if not self.identity:
             self.identity = SQRLIdentity()
 
+        # by this point form has validated that if the identity is being switched
+        # all necessary signatures were provided and validated
+        # so we can safely set the public key which will either
+        # 1) set new public key for new identity associations
+        # 2) overwrite the existing public key with the same public key
+        # 3) overwrite the existing public key which by this point
+        # is previous identity with new current identity
         self.identity.public_key = Base64.encode(self.client['idk'])
         self.identity.is_only_sqrl = 'sqrlonly' in self.client['opt']
 
-        if self.client['vuk']:
+        # form validation will make sure that these are supplied when
+        # necessary (e.g. creating new identity)
+        # the reason we don't simply want to always overwrite these is
+        # because for already associated identities, client will not supply
+        # them so we dont want to overwrite the model with empty values
+        if self.client.get('vuk') and not self.identity.verify_unlock_key:
             self.identity.verify_unlock_key = Base64.encode(self.client['vuk'])
-        if self.client['suk']:
+        if self.client.get('suk') and not self.identity.server_unlock_key:
             self.identity.server_unlock_key = Base64.encode(self.client['suk'])
 
         return self.identity
