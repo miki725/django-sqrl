@@ -15,7 +15,7 @@ from .views import (
 
 urlpatterns = patterns(
     '',
-    url(r'login/$', SQRLLoginView.as_view(), name='login'),
+    url(r'^login/$', SQRLLoginView.as_view(), name='login'),
     url(r'^qr/$', SQRLQRGeneratorView.as_view(), name='qr-image'),
     url(r'^auth/$', SQRLAuthView.as_view(), name='auth'),
     url(r'^status/$', SQRLStatusView.as_view(), name='status'),
