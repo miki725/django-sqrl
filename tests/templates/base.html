@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>{% block title %}{% endblock %}</title>
+</head>
+
+<body>
+
+<header>
+    {% block header %}
+        <div>SQRL Test Server</div>
+        <nav>
+            {% if user.is_authenticated %}
+                Logged in as {{ user.username }}
+            {% endif %}
+            <ul>
+                {% if user.is_authenticated %}
+                    <li>
+                        <a href="{% url 'logout' %}">Log out</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'sqrl:associate-identity' %}">Associate identity</a>
+                    </li>
+                {% else %}
+                    <li>
+                        <a href="{% url 'sqrl:login' %}">Log In</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endblock %}
+</header>
+
+<div id="content">
+    {% block content %}
+    {% endblock content %}
+</div>
+
+<div id="footer">
+    {% block footer %}
+        SQRL Test server. Created by <a href="https://github.com/miki725">miki725</a>.
+    {% endblock %}
+</div>
+
+</body>
+</html>
