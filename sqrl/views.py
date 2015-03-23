@@ -28,7 +28,8 @@ from .forms import (
     RequestForm,
 )
 from .models import Nut, SQRLIdentity
-from .utils import Base64, Encoder, QRGenerator, get_user_ip, sign_data
+from .response import SQRLHttpResponse
+from .utils import Base64, QRGenerator, get_user_ip
 
 
 SQRL_IDENTITY_SESSION_KEY = '_sqrl_identity'
@@ -84,43 +85,6 @@ class SQRLStatusView(View):
         return JsonResponse(data)
 
 
-class SQRLHTTPResponse(HttpResponse):
-    def __init__(self, nut, data, *args, **kwargs):
-        normalized_data = Encoder.normalize(self.sign_response(nut, data))
-        content = self.construct_http_server_response(normalized_data)
-
-        kwargs.setdefault('content_type', 'text/plain')
-
-        super(SQRLHTTPResponse, self).__init__(content, *args, **kwargs)
-
-        self['Content-Length'] = len(self.content)
-
-        self.add_debug_headers(normalized_data)
-
-        log.debug('Response encoded data:\n{}'
-                  ''.format(content))
-        log.debug('Response data:\n{}'
-                  ''.format(pformat(normalized_data)))
-        log.debug('Response TIF breakdown:\n{}'
-                  ''.format(pformat(TIF(int(data['tif'], 16)).breakdown())))
-
-    def sign_response(self, nut, data):
-        if not nut:
-            return data
-
-        data['mac'] = sign_data(data, nut)
-
-        return data
-
-    def construct_http_server_response(self, data):
-        return Encoder.base64_dumps(data)
-
-    def add_debug_headers(self, normalized_data):
-        if settings.DEBUG:
-            for k, v in normalized_data.items():
-                self['SQRL-{}'.format(k)] = v
-
-
 class SQRLAuthView(View):
     http_method_names = ['post']
 
@@ -148,7 +112,7 @@ class SQRLAuthView(View):
         return _data
 
     def render_to_response(self, data=None):
-        return SQRLHTTPResponse(self.nut, self.get_server_data(data))
+        return SQRLHttpResponse(self.nut, self.get_server_data(data))
 
     def do_ips_match(self):
         if get_user_ip(self.request) == self.nut.ip_address:
