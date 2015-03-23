@@ -149,9 +149,14 @@ class RequestForm(forms.Form):
 
         if self.identity and any([suk, vuk]):
             raise forms.ValidationError(
-                'Cannot send suk or vuk when SQRL identity is already associated'
+                'Cannot send suk or vuk when SQRL identity is already associated.'
             )
 
+        # since we only store a single identity at the time
+        # its impossible for when identity is being changed
+        # self.identity will exist since by definition server
+        # should only be aware of the previous identity
+        # since the client is sending a new identity for storage.
         if all((not self.identity,
                 self.previous_identity,
                 not self.cleaned_data.get('urs'))):
