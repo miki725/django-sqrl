@@ -50,6 +50,8 @@ SECRET_KEY = 'foo'
 
 ROOT_URLCONF = 'tests.urls'
 
+LOGIN_REDIRECT_URL = '/'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

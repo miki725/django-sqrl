@@ -64,13 +64,23 @@ class SQRLQRGeneratorView(FormView):
 
 class SQRLStatusView(View):
     def post(self, request, *args, **kwargs):
+        is_authenticated = request.user.is_authenticated()
+        is_registration_pending = SQRL_IDENTITY_SESSION_KEY in request.session
+
+        after_login_url = settings.LOGIN_REDIRECT_URL
+        register_url = reverse('sqrl:complete-registration')
+
         data = {
             'is_logged_in': request.user.is_authenticated(),
-            'registration': {
-                'is_pending': SQRL_IDENTITY_SESSION_KEY in request.session,
-                'uri': reverse('sqrl:complete-registration'),
-            }
         }
+
+        if is_authenticated or is_registration_pending:
+            redirect_to = after_login_url if is_authenticated else register_url
+
+            data.update({
+                'redirect_to': redirect_to,
+            })
+
         return JsonResponse(data)
 
 

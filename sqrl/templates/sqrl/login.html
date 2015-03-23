@@ -1,5 +1,6 @@
 {% extends "sqrl/sqrl_base.html" %}
 {% load sqrl %}
+{% load static %}
 
 {% block title %}Login via SQRL{% endblock %}
 
@@ -18,6 +19,12 @@
     </p>
 {% endblock %}
 
+{% block scripts %}
+    <script>
+        SQRL_CHECK_URL = '{% url 'sqrl:status' %}';
+    </script>
+    <script src="{% static 'sqrl/sqrl.js' %}"></script>
+{% endblock %}
 
 {% comment %}
 **sqrl/login.html**

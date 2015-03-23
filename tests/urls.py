@@ -5,12 +5,14 @@ from django.conf.urls import include, patterns, url
 from django.contrib import admin
 from django.contrib.auth.urls import urlpatterns as auth_urlpatterns
 from django.contrib.auth.views import logout
+from django.views.generic import TemplateView
 
 from sqrl.urls import urlpatterns as sqrl_urlpatterns
 
 
 urlpatterns = patterns(
     '',
+    url(r'^$', TemplateView.as_view(template_name='sqrl.html'), name='index'),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^sqrl/', include(sqrl_urlpatterns, namespace='sqrl')),
     url(r'^logout/', logout, {'next_page': 'sqrl:login'}, name='logout'),

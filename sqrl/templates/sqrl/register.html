@@ -1,15 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title></title>
-</head>
-<body>
+{% extends "sqrl/sqrl_base.html" %}
 
-<form method="post">
-    {{ form.as_p }}
-    <input type="submit">
-</form>
+{% block title %}Complete User Tegistration{% endblock %}
 
-</body>
-</html>
+{% block content %}
+    <h1>Complete User Registration</h1>
+
+    <p>
+        Already have account?
+        Login <a href="{% url 'login' %}">here</a> to associate
+        SQRL identity with existing account.
+    </p>
+
+    <form method="post">
+        {{ form.as_p }}
+        <input type="submit">
+    </form>
+{% endblock %}
+
+{% comment %}
+**sqrl/register.html**
+Used to complete user registration. This template is used when user is trying to login
+with SQRL however does not already have that SQRL identity associated with any
+existing account. Since SQRL does not provide any additional information other then
+SQRL identity itslef, we need to collect some additinal information from the user
+such as username. All the relevant information is collected via form.
+
+No special variables are passed in the context.
+All necessary data should already be in the context.
+{% endcomment %}
