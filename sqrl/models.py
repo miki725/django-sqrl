@@ -2,15 +2,10 @@
 from __future__ import print_function, unicode_literals
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser, UserManager as _UserManager
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
 from .utils import generate_nonce
-
-
-class IdentityManager(_UserManager):
-    pass
 
 
 class SQRLIdentity(models.Model):
@@ -21,8 +16,6 @@ class SQRLIdentity(models.Model):
     server_unlock_key = models.CharField(max_length=43, blank=True)
     is_enabled = models.BooleanField(default=True)
     is_only_sqrl = models.BooleanField(default=False)
-
-    objects = IdentityManager()
 
     class Meta(object):
         # Redefine db_table so that table name is not funny
