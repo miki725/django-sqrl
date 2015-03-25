@@ -13,7 +13,6 @@ from django.contrib.auth import (
     SESSION_KEY,
     login,
 )
-from django.contrib.sessions.middleware import SessionMiddleware
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponse, JsonResponse, QueryDict
@@ -29,6 +28,7 @@ from .forms import (
 )
 from .models import Nut, SQRLIdentity
 from .response import SQRLHttpResponse
+from .sqrl import SQRLInitialization
 from .utils import Base64, QRGenerator, get_user_ip
 
 
@@ -97,11 +97,19 @@ class SQRLAuthView(View):
             return self.render_to_response()
 
     def get_server_data(self, data=None):
+        if self.nut:
+            self.nut.renew_nonce()
+            nut = self.nut.nonce
+            qry = SQRLInitialization(self.request, self.nut).url
+        else:
+            nut = self.nut_value
+            qry = self.request.get_full_path()
+
         _data = OrderedDict((
             ('ver', 1),
-            ('nut', self.nut_value),
+            ('nut', nut),
             ('tif', self.tif.as_hex_string()),
-            ('qry', self.request.get_full_path()),
+            ('qry', qry),
             ('sfn', getattr(settings, 'SQRL_SERVER_FRIENDLY_NAME',
                             self.request.get_host().split(':')[0])[:64]),
         ))

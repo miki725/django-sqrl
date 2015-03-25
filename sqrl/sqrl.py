@@ -9,8 +9,10 @@ from .utils import generate_nonce, get_user_ip
 
 
 class SQRLInitialization(object):
-    def __init__(self, request):
+    def __init__(self, request, nut=None):
         self.request = request
+        if nut is not None:
+            self.nut = nut
 
     def get_session_key(self):
         session_key = self.request.session.session_key
@@ -32,6 +34,10 @@ class SQRLInitialization(object):
 
         return self._nut
 
+    @nut.setter
+    def nut(self, value):
+        self._nut = value
+
     def generate_nut_kwargs(self):
         return {
             'nonce': generate_nonce(),
@@ -52,9 +58,18 @@ class SQRLInitialization(object):
     @property
     def url(self):
         return (
-            '{scheme}://{host}{url}?{params}'
+            '{url}?{params}'
             ''.format(scheme='sqrl' if self.request.is_secure() else 'qrl',
                       host=self.request.get_host(),
                       url=self.get_sqrl_url(),
                       params=self.get_sqrl_url_params())
+        )
+
+    @property
+    def sqrl_url(self):
+        return (
+            '{scheme}://{host}{url}'
+            ''.format(scheme='sqrl' if self.request.is_secure() else 'qrl',
+                      host=self.request.get_host(),
+                      url=self.url)
         )

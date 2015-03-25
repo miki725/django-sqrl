@@ -53,5 +53,6 @@ class Nut(models.Model):
         return self.nonce
 
     def renew_nonce(self):
+        self.delete()
         self.nonce = generate_nonce()
         self.save()

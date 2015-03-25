@@ -18,4 +18,4 @@ def sqrl(context):
 
 @register.simple_tag
 def sqrl_qr_image_url(sqrl):
-    return '{}?url={}'.format(reverse('sqrl:qr-image'), urlencode(sqrl.url))
+    return '{}?url={}'.format(reverse('sqrl:qr-image'), urlencode(sqrl.sqrl_url))
