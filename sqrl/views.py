@@ -186,9 +186,9 @@ class SQRLAuthView(View):
 
         self.client = self.payload_form.cleaned_data['client']
 
-        self.session = None
         self.identity = self.payload_form.identity
         self.previous_identity = self.payload_form.previous_identity
+        self.session = self.payload_form.session
         self.do_ids_match()
         self.is_sqrl_disabled()
 
@@ -212,7 +212,6 @@ class SQRLAuthView(View):
             return
 
         self.create_or_update_identity()
-        self.session = SessionMiddleware().SessionStore(self.nut.session_key)
 
         # user is already logged in
         # so simply associate identity with the user
