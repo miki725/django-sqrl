@@ -322,7 +322,7 @@ class SQRLCompleteRegistrationView(FormView):
 
         login(self.request, user)
 
-        return redirect('sqrl:login')
+        return redirect(settings.LOGIN_REDIRECT_URL)
 
 
 class SQRLAssociateIdentityView(LoginRequiredMixin, TemplateView):
