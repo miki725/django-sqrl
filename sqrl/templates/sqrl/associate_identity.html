@@ -1,5 +1,6 @@
 {% extends "sqrl/sqrl_base.html" %}
 {% load sqrl %}
+{% load static %}
 
 {% block title %}Associate SQRL Identity{% endblock %}
 
@@ -23,6 +24,13 @@
             <img src="{% sqrl_qr_image_url sqrl %}">
         </a>
     </p>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        SQRL_CHECK_URL = '{% url 'sqrl:status' %}';
+    </script>
+    <script src="{% static 'sqrl/sqrl.js' %}"></script>
 {% endblock %}
 
 

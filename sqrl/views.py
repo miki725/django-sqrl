@@ -239,6 +239,8 @@ class SQRLAuthView(View):
             self.session[BACKEND_SESSION_KEY] = user.backend
             self.session[HASH_SESSION_KEY] = session_auth_hash
 
+            log.info('Successfully authenticated user "{}" via SQRL'.format(user.username))
+
         # user was not found so lets save identity information in session
         # so that we can complete user registration
         else:
@@ -321,6 +323,9 @@ class SQRLCompleteRegistrationView(FormView):
         identity.save()
 
         login(self.request, user)
+
+        log.info('Successfully registered and authenticated user '
+                 '"{}" via SQRL'.format(user.username))
 
         return redirect(settings.LOGIN_REDIRECT_URL)
 
