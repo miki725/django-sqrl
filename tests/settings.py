@@ -30,6 +30,9 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 INSTALLED_APPS = (
+    'sqrl',
+    'tests',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,9 +41,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_extensions',
     'sslserver',
-
-    'sqrl',
-    'tests',
 )
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'

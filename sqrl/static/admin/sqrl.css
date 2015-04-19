@@ -1,0 +1,53 @@
+.align-center {
+    text-align: center;
+}
+
+#footer {
+    padding: 0;
+    margin: 0;
+    height: 0;
+}
+
+.login .submit-row {
+    text-align: center;
+    clear: both;
+    padding: 1em 0 0 0;
+}
+
+.line-center {
+    margin: 0;
+    padding: 0 10px;
+    background: #ffffff;
+    display: inline-block;
+}
+
+.sqrl .or {
+    position: relative;
+    z-index: 2;
+}
+
+.sqrl .or:after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: solid 1px #dddddd;
+    z-index: -1;
+}
+
+.sqrl .or {
+    margin: 20px;
+}
+
+.sqrl h3 {
+    margin-bottom: 15px;
+}
+
+.sqrl .img {
+    text-align: center;
+}
+
+.sqrl .img img {
+    width: 60%;
+}
