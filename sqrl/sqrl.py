@@ -18,7 +18,7 @@ class SQRLInitialization(object):
         session_key = self.request.session.session_key
 
         if session_key is None:
-            self.request.session.save()
+            self.request.session.create()
             session_key = self.request.session.session_key
 
         return session_key
