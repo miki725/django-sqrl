@@ -11,11 +11,21 @@ from .fields import (
     Base64ConditionalPairsField,
     Base64Field,
     Base64PairsField,
+    ExtractedNextUrlField,
+    NextUrlField,
     SQRLURLField,
     TildeMultipleValuesField,
 )
 from .models import SQRLIdentity
 from .utils import Base64, sign_data, verify_signature
+
+
+class NextUrlForm(forms.Form):
+    next = NextUrlField()
+
+
+class ExtractedNextUrlForm(forms.Form):
+    url = ExtractedNextUrlField()
 
 
 class GenerateQRForm(forms.Form):

@@ -25,6 +25,8 @@ from .forms import (
     GenerateQRForm,
     RandomPasswordUserCreationForm,
     RequestForm,
+    NextUrlForm,
+    ExtractedNextUrlForm,
 )
 from .models import Nut, SQRLIdentity
 from .response import SQRLHttpResponse
@@ -64,12 +66,19 @@ class SQRLQRGeneratorView(FormView):
 
 
 class SQRLStatusView(View):
+    def get_after_login_url(self):
+        next_form = ExtractedNextUrlForm(self.request.GET)
+        if next_form.is_valid():
+            return next_form.cleaned_data['url']
+
+        return settings.LOGIN_REDIRECT_URL
+
     def post(self, request, *args, **kwargs):
         is_authenticated = request.user.is_authenticated()
         is_registration_pending = SQRL_IDENTITY_SESSION_KEY in request.session
 
-        after_login_url = settings.LOGIN_REDIRECT_URL
-        register_url = reverse('sqrl:complete-registration')
+        after_login_url = self.get_after_login_url()
+        register_url = reverse('sqrl:complete-registration') + '?next={}'.format(after_login_url)
 
         data = {
             'is_logged_in': request.user.is_authenticated(),
@@ -246,8 +255,9 @@ class SQRLAuthView(View):
         else:
             serialized = serializers.serialize('json', [self.identity])
             self.session[SQRL_IDENTITY_SESSION_KEY] = serialized
-            log.debug('Storing sqrl identity in session to complete registration:\n{}'
-                      ''.format(pformat(json.loads(serialized)[0]['fields'])))
+            log.debug('Storing sqrl identity in session "{}" to complete registration:\n{}'
+                      ''.format(self.session.session_key,
+                                pformat(json.loads(serialized)[0]['fields'])))
 
     def disable(self):
         self.create_or_update_identity()
@@ -296,6 +306,7 @@ class SQRLAuthView(View):
 class SQRLCompleteRegistrationView(FormView):
     form_class = RandomPasswordUserCreationForm
     template_name = 'sqrl/register.html'
+    success_url = settings.LOGIN_REDIRECT_URL
 
     def check_session_for_sqrl_identity(self):
         if SQRL_IDENTITY_SESSION_KEY not in self.request.session:
@@ -308,6 +319,12 @@ class SQRLCompleteRegistrationView(FormView):
     def post(self, request, *args, **kwargs):
         self.check_session_for_sqrl_identity()
         return super(SQRLCompleteRegistrationView, self).post(request, *args, **kwargs)
+
+    def get_success_url(self):
+        next_form = NextUrlForm(self.request.GET)
+        if next_form.is_valid():
+            return next_form.cleaned_data['next']
+        return self.success_url
 
     def form_valid(self, form):
         try:
@@ -327,7 +344,7 @@ class SQRLCompleteRegistrationView(FormView):
         log.info('Successfully registered and authenticated user '
                  '"{}" via SQRL'.format(user.username))
 
-        return redirect(settings.LOGIN_REDIRECT_URL)
+        return redirect(self.get_success_url())
 
 
 class SQRLAssociateIdentityView(LoginRequiredMixin, TemplateView):

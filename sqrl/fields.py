@@ -3,10 +3,57 @@ from __future__ import print_function, unicode_literals
 import re
 from collections import OrderedDict
 
+import six
 from django import forms
+from django.core.urlresolvers import Resolver404, resolve
 from django.core.validators import URLValidator
+from django.http import QueryDict
 
 from .utils import Base64
+
+
+class NextUrlField(forms.CharField):
+    default_error_messages = {
+        'invalid_url': 'Invalid next url.'
+    }
+
+    def to_python(self, value):
+        value = super(NextUrlField, self).to_python(value)
+
+        if value in self.empty_values:
+            return value
+
+        parsed = six.moves.urllib.parse.urlparse(value)
+        path = parsed.path
+
+        try:
+            resolve(path)
+        except Resolver404:
+            raise forms.ValidationError(self.error_messages['invalid_url'])
+        else:
+            return path
+
+
+class ExtractedNextUrlField(NextUrlField):
+    default_error_messages = {
+        'missing_next': 'Missing next query parameter.'
+    }
+
+    def to_python(self, value):
+        value = forms.CharField.to_python(self, value)
+
+        if value in self.empty_values:
+            return value
+
+        decoded = six.moves.urllib.parse.urlparse(
+            six.moves.urllib.parse.unquote(value)
+        )
+        data = QueryDict(decoded.query)
+
+        if 'next' not in data:
+            raise forms.ValidationError(self.error_messages['missing_next'])
+
+        return super(ExtractedNextUrlField, self).to_python(data['next'])
 
 
 class SQRLURLValidator(URLValidator):
