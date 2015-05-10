@@ -1,33 +1,24 @@
 'use strict';
 
 (function() {
-  if (window.jQuery !== undefined) {
-    // jQuery API Ajax is much more user-friendly
-    // and handles browsers much better
-    $(function() {
-      var sqrl_timeout = setInterval(function() {
-        $.post(SQRL_CHECK_URL)
-          .done(function(data) {
-            if (data.is_logged_in === true || data.redirect_to !== undefined) {
-              clearTimeout(sqrl_timeout);
-              if (data.redirect_to !== undefined) {
-                window.location.href = data.redirect_to;
-              }
-            }
-          })
-          .fail(function() {
-            clearInterval(sqrl_timeout);
-          });
-      }, 1500);
-    });
+  var next_input     = document.querySelectorAll('input[name="next"]'),
+      next_url       = next_input.length > 0 ? next_input[0].value : null,
+      current_url    = window.location.href,
+      sqrl_frequency = 1500,
+      sqrl_call      = function() {
+        setTimeout(sqrl_handler, sqrl_frequency);
+      },
+      sqrl_handler   = function() {
+        var request = new XMLHttpRequest(),
+            url     = SQRL_CHECK_URL + '?url=';
 
-  } else {
-    // if jQuery is not found, then fallback to raw XHR use
-    // which is not as reliable but works in most cases
-    window.onload = function() {
-      var sqrl_timeout = setInterval(function() {
-        var request = new XMLHttpRequest();
-        request.open('POST', SQRL_CHECK_URL, false);
+        if (next_url !== null) {
+          url = url + encodeURIComponent('?next=' + next_url);
+        } else {
+          url = url + encodeURIComponent(current_url);
+        }
+
+        request.open('POST', url, false);
         request.onreadystatechange = handleStateChange;
 
         function handleStateChange() {
@@ -35,13 +26,12 @@
             if (this.status === 200) {
               var data = JSON.parse(this.responseText);
               if (data.is_logged_in === true || data.redirect_to !== undefined) {
-                clearTimeout(sqrl_timeout);
                 if (data.redirect_to !== undefined) {
                   window.location.href = data.redirect_to;
                 }
+              } else {
+                sqrl_call();
               }
-            } else {
-              clearInterval(sqrl_timeout);
             }
           }
         }
@@ -49,9 +39,10 @@
         try {
           request.send(null);
         } catch (exception) {
-          clearInterval(sqrl_timeout);
+          // do not send anymore requests if error occurred
         }
-      }, 1500);
-    }
-  }
+      };
+
+  window.onload = sqrl_handler;
+
 })();
