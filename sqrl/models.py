@@ -5,17 +5,40 @@ from django.conf import settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
-from .utils import generate_nonce
+from .crypto import generate_randomness
+from .managers import NutManager
 
 
 class SQRLIdentity(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='sqrl_identity')
 
-    public_key = models.CharField(max_length=43, db_index=True, unique=True)
-    verify_unlock_key = models.CharField(max_length=43, blank=True)
-    server_unlock_key = models.CharField(max_length=43, blank=True)
-    is_enabled = models.BooleanField(default=True)
-    is_only_sqrl = models.BooleanField(default=False)
+    public_key = models.CharField(
+        max_length=43, db_index=True, unique=True,
+        help_text='Public key of per-site users public-private key pair. '
+                  'This key is used to verify users signature signing SQRL transaction '
+                  'including server generated random nut using users private key.'
+    )
+    server_unlock_key = models.CharField(
+        max_length=43, blank=True,
+        help_text='This is public unlock key sent to client which client can use to '
+                  'generate urs (unlock request signature) signature which server can validate '
+                  'using vuk.'
+    )
+    verify_unlock_key = models.CharField(
+        max_length=43, blank=True,
+        help_text='This is a key stored by server which is used to validate '
+                  'urs (unlock request signature) signatures. This key is not sent to user.'
+    )
+    is_enabled = models.BooleanField(
+        default=True,
+        help_text='Boolean indicating whether user can authenticate using SQRL.'
+    )
+    is_only_sqrl = models.BooleanField(
+        default=False,
+        help_text='Boolean indicating that only SQRL should be allowed to authenticate user. '
+                  'When enabled via flag in SQRL client requests, this should disable all other '
+                  'methods of authentication such as username/password.'
+    )
 
     class Meta(object):
         # Redefine db_table so that table name is not funny
@@ -27,25 +50,58 @@ class SQRLIdentity(models.Model):
         db_table = 'sqrl_identity'
 
 
-class NutManager(models.Manager):
-    def replace_or_create(self, session_key, **kwargs):
-        self.get_queryset().filter(session_key=session_key).delete()
-        return self.create(session_key=session_key, **kwargs)
-
-
 @python_2_unicode_compatible
-class Nut(models.Model):
-    nonce = models.CharField(max_length=43, unique=True, db_index=True, primary_key=True)
-    session_key = models.CharField(max_length=32, unique=True, db_index=True)
-    ip_address = models.GenericIPAddressField()
-    created = models.DateTimeField(auto_now_add=True)
+class SQRLNut(models.Model):
+    nonce = models.CharField(
+        max_length=43, unique=True, db_index=True, primary_key=True,
+        help_text='Single-use random nonce used to identify SQRL transaction. '
+                  'This nonce is regenerated for each SQRL communication within '
+                  'a single SQRL transaction. Since this nonce is a one-time token, '
+                  'it allows for the server to prevent replay attacks.'
+    )
+    transaction_nonce = models.CharField(
+        max_length=43, unique=True, db_index=True,
+        help_text='A random nonce used to identify a full SQRL transaction. '
+                  'Session key cannot be used since it is persistent across '
+                  'complete user visit which can include multiple tabs/windows. '
+                  'This transaction id is regenerated for each new tab which '
+                  'allows the client to identity when a particular SQRL transaction '
+                  'has completed hence redirect user to more appropriate page.'
+    )
+
+    session_key = models.CharField(
+        max_length=32, unique=True, db_index=True,
+        help_text='User regular session key. This is used to associate client session '
+                  'to a SQRL transaction since transaction can be completed on a different '
+                  'device which does not have access to original user session.'
+    )
+
+    is_transaction_complete = models.BooleanField(
+        default=False,
+        help_text='Indicator whether transaction is complete. '
+                  'Can we used by UI to automatically redirect to appropriate page '
+                  'once SQRL transaction is complete.',
+    )
+    ip_address = models.GenericIPAddressField(
+        help_text='Originating IP address of client who initiated SQRL transaction. '
+                  'Used to set appropriate TIF response code.',
+    )
+    timestamp = models.DateTimeField(
+        auto_now=True, auto_now_add=True,
+        help_text='Last timestamp when nut was either created or modified. '
+                  'Used for purging purposes.',
+    )
 
     objects = NutManager()
+
+    class Meta(object):
+        # Explicitly define db_table for clearer table name
+        db_table = 'sqrl_nut'
 
     def __str__(self):
         return self.nonce
 
-    def renew_nonce(self):
+    def renew(self):
         self.delete()
-        self.nonce = generate_nonce()
+        self.nonce = generate_randomness()
         self.save()

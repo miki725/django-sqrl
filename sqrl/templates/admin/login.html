@@ -79,8 +79,8 @@
             </div>
         </div>
 
+        {% sqrl_status_url_script_tag sqrl %}
         <script type="text/javascript">
-            SQRL_CHECK_URL = '{% url 'sqrl:status' %}';
             document.getElementById('id_username').focus()
         </script>
         <script src="{% static 'sqrl/sqrl.js' %}"></script>

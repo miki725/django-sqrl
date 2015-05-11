@@ -7,6 +7,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.utils.crypto import get_random_string
 
+from .crypto import HMAC, Ed25519
 from .fields import (
     Base64ConditionalPairsField,
     Base64Field,
@@ -17,7 +18,7 @@ from .fields import (
     TildeMultipleValuesField,
 )
 from .models import SQRLIdentity
-from .utils import Base64, sign_data, verify_signature
+from .utils import Base64
 
 
 class NextUrlForm(forms.Form):
@@ -82,12 +83,10 @@ class RequestForm(forms.Form):
         if 'mac' not in server:
             raise forms.ValidationError('Missing server signature.')
 
-        is_valid_signature = True
-        signature = sign_data(server, self.nut)
-
         try:
-            if signature != Base64.decode(server['mac']):
-                is_valid_signature = False
+            is_valid_signature = HMAC(self.nut, server).is_signature_valid(
+                Base64.decode(server['mac'])
+            )
         except ValueError:
             is_valid_signature = False
 
@@ -101,7 +100,7 @@ class RequestForm(forms.Form):
         server = self.data['server']
         msg = (client + server).encode('ascii')
 
-        if not verify_signature(key, signature, msg):
+        if not Ed25519(key, msg).is_signature_valid(signature):
             raise forms.ValidationError('Invalid {} signature.'.format(name))
 
     def clean_ids(self):

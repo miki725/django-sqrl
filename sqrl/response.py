@@ -6,8 +6,9 @@ from pprint import pformat
 from django.conf import settings
 from django.http import HttpResponse
 
+from .crypto import HMAC
 from .exceptions import TIF
-from .utils import Encoder, sign_data
+from .utils import Encoder
 
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class SQRLHttpResponse(HttpResponse):
         if not nut:
             return data
 
-        data['mac'] = sign_data(data, nut)
+        data['mac'] = HMAC(nut, data).sign_data()
 
         return data
 

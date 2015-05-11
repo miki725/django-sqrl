@@ -25,9 +25,12 @@
           if (request.readyState === 4) {
             if (this.status === 200) {
               var data = JSON.parse(this.responseText);
-              if (data.is_logged_in === true || data.redirect_to !== undefined) {
+              if (data.transaction_complete === true) {
                 if (data.redirect_to !== undefined) {
                   window.location.href = data.redirect_to;
+                } else {
+                  console.error('Server indicated that SQRL transaction is complete ' +
+                                'but has not indicated where to redirect');
                 }
               } else {
                 sqrl_call();

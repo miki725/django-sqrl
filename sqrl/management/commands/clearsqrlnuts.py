@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils.timezone import now
 
-from sqrl.models import Nut
+from sqrl.models import SQRLNut
 
 
 class Command(BaseCommand):
@@ -18,4 +18,5 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         ttl = getattr(settings, 'SQRL', {}).get('TTL', 60 * 5)  # 5 minutes
         delete_before = now() + timedelta(seconds=-ttl)
-        Nut.objects.filter(created__lt=delete_before).delete()
+
+        SQRLNut.objects.filter(timestamp__lt=delete_before).delete()

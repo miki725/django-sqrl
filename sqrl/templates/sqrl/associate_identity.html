@@ -20,6 +20,7 @@
 
     <p>
         {% sqrl as sqrl %}
+        {% sqrl_status_url_script_tag sqrl %}
         <a href="{{ sqrl.sqrl_url }}">
             <img src="{% sqrl_qr_image_url sqrl %}">
         </a>
@@ -27,9 +28,6 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        SQRL_CHECK_URL = '{% url 'sqrl:status' %}';
-    </script>
     <script src="{% static 'sqrl/sqrl.js' %}"></script>
 {% endblock %}
 

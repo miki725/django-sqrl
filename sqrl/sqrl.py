@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
+from __future__ import division, print_function, unicode_literals
 
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
 
-from .models import Nut
-from .utils import generate_nonce, get_user_ip
+from .crypto import generate_randomness
+from .models import SQRLNut
+from .utils import get_user_ip
 
 
 class SQRLInitialization(object):
@@ -28,7 +29,7 @@ class SQRLInitialization(object):
         if hasattr(self, '_nut'):
             return self._nut
 
-        self._nut = Nut.objects.replace_or_create(
+        self._nut = SQRLNut.objects.replace_or_create(
             **self.generate_nut_kwargs()
         )
 
@@ -39,10 +40,15 @@ class SQRLInitialization(object):
         self._nut = value
 
     def generate_nut_kwargs(self):
+        randomness = generate_randomness(64)
+        l = len(randomness) // 2
+
         return {
-            'nonce': generate_nonce(),
-            'ip_address': get_user_ip(self.request),
             'session_key': self.get_session_key(),
+            'nonce': randomness[:l],
+            'transaction_nonce': randomness[l:],
+            'is_transaction_complete': False,
+            'ip_address': get_user_ip(self.request),
         }
 
     def get_sqrl_url(self):
@@ -59,9 +65,7 @@ class SQRLInitialization(object):
     def url(self):
         return (
             '{url}?{params}'
-            ''.format(scheme='sqrl' if self.request.is_secure() else 'qrl',
-                      host=self.request.get_host(),
-                      url=self.get_sqrl_url(),
+            ''.format(url=self.get_sqrl_url(),
                       params=self.get_sqrl_url_params())
         )
 

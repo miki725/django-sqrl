@@ -2,16 +2,10 @@
 from __future__ import print_function, unicode_literals
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from collections import OrderedDict
-from random import SystemRandom
 
-import ed25519
 import six
 from django.core.files.base import ContentFile
-from django.utils.crypto import salted_hmac
 from qrcode import ERROR_CORRECT_L, QRCode
-
-
-random = SystemRandom()
 
 
 class Base64(object):
@@ -103,34 +97,3 @@ def get_user_ip(request):
         request.META.get('HTTP_X_REAL_IP')
         or request.META['REMOTE_ADDR']
     )
-
-
-def sign_data(data, nut):
-    assert isinstance(data, OrderedDict)
-
-    encoded = Encoder.base64_dumps(OrderedDict(
-        (k, v) for k, v in data.items()
-        if k != 'mac'
-    ))
-    signature = salted_hmac(nut.session_key, encoded).digest()
-
-    return signature
-
-
-def verify_signature(key, signature, msg):
-    try:
-        vk = ed25519.VerifyingKey(key)
-        vk.verify(signature, msg)
-    except (AssertionError, ed25519.BadSignatureError):
-        return False
-    else:
-        return True
-
-
-def generate_signature(key, msg):
-    sk = ed25519.SigningKey(key)
-    return sk.sign(msg)
-
-
-def generate_nonce():
-    return Base64.encode(bytearray(random.getrandbits(8) for i in range(32)))

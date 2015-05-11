@@ -16,19 +16,19 @@ from django.contrib.auth import (
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponse, JsonResponse, QueryDict
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import FormView, TemplateView, View
 
 from .exceptions import TIF, TIFException
 from .forms import (
     AuthQueryDictForm,
+    ExtractedNextUrlForm,
     GenerateQRForm,
+    NextUrlForm,
     RandomPasswordUserCreationForm,
     RequestForm,
-    NextUrlForm,
-    ExtractedNextUrlForm,
 )
-from .models import Nut, SQRLIdentity
+from .models import SQRLIdentity, SQRLNut
 from .response import SQRLHttpResponse
 from .sqrl import SQRLInitialization
 from .utils import Base64, QRGenerator, get_user_ip
@@ -73,21 +73,24 @@ class SQRLStatusView(View):
 
         return settings.LOGIN_REDIRECT_URL
 
-    def post(self, request, *args, **kwargs):
-        is_authenticated = request.user.is_authenticated()
-        is_registration_pending = SQRL_IDENTITY_SESSION_KEY in request.session
+    def get_object(self):
+        return get_object_or_404(SQRLNut, transaction_nonce=self.kwargs['transaction'])
 
-        after_login_url = self.get_after_login_url()
-        register_url = reverse('sqrl:complete-registration') + '?next={}'.format(after_login_url)
+    def post(self, request, transaction, *args, **kwargs):
+        transaction = self.get_object()
 
         data = {
-            'is_logged_in': request.user.is_authenticated(),
+            'transaction_complete': False,
         }
 
-        if is_authenticated or is_registration_pending:
-            redirect_to = after_login_url if is_authenticated else register_url
+        if transaction.is_transaction_complete:
+            redirect_to = self.get_after_login_url()
+
+            if not request.user.is_authenticated() and SQRL_IDENTITY_SESSION_KEY in request.session:
+                redirect_to = reverse('sqrl:complete-registration') + '?next={}'.format(redirect_to)
 
             data.update({
+                'transaction_complete': True,
                 'redirect_to': redirect_to,
             })
 
@@ -107,7 +110,7 @@ class SQRLAuthView(View):
 
     def get_server_data(self, data=None):
         if self.nut:
-            self.nut.renew_nonce()
+            self.nut.renew()
             nut = self.nut.nonce
             qry = SQRLInitialization(self.request, self.nut).url
         else:
@@ -154,7 +157,7 @@ class SQRLAuthView(View):
             self.is_disabled = True
 
     def get_nut_or_error(self):
-        self.nut = Nut.objects.filter(nonce=self.nut_value).first()
+        self.nut = SQRLNut.objects.filter(nonce=self.nut_value).first()
 
         if not self.nut:
             log.debug('Nut not found')
@@ -258,6 +261,8 @@ class SQRLAuthView(View):
             log.debug('Storing sqrl identity in session "{}" to complete registration:\n{}'
                       ''.format(self.session.session_key,
                                 pformat(json.loads(serialized)[0]['fields'])))
+
+        self.nut.is_transaction_complete = True
 
     def disable(self):
         self.create_or_update_identity()
