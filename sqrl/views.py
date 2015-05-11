@@ -102,6 +102,7 @@ class SQRLAuthView(View):
 
     def dispatch(self, request, *args, **kwargs):
         self.tif = TIF(0)
+        self.identity = None
         try:
             return super(SQRLAuthView, self).dispatch(request, *args, **kwargs)
         except TIFException as e:
@@ -125,6 +126,9 @@ class SQRLAuthView(View):
             ('sfn', getattr(settings, 'SQRL_SERVER_FRIENDLY_NAME',
                             self.request.get_host().split(':')[0])[:64]),
         ))
+
+        if self.identity:
+            _data['suk'] = self.identity.server_unlock_key
 
         if data is not None:
             _data.update(data)
@@ -157,7 +161,10 @@ class SQRLAuthView(View):
             self.is_disabled = True
 
     def get_nut_or_error(self):
-        self.nut = SQRLNut.objects.filter(nonce=self.nut_value).first()
+        self.nut = (SQRLNut.objects
+                    .filter(nonce=self.nut_value,
+                            is_transaction_complete=False)
+                    .first())
 
         if not self.nut:
             log.debug('Nut not found')
@@ -268,9 +275,19 @@ class SQRLAuthView(View):
         self.create_or_update_identity()
         self.identity.is_enabled = False
 
+        self.nut.is_transaction_complete = True
+
     def enable(self):
         self.create_or_update_identity()
         self.identity.is_enabled = True
+
+        self.nut.is_transaction_complete = True
+
+    def remove(self):
+        self.identity.delete()
+        self.identity = None
+
+        self.nut.is_transaction_complete = True
 
     def finalize(self):
         if self.identity and self.identity.user_id:
@@ -279,9 +296,6 @@ class SQRLAuthView(View):
             self.session.save()
 
     def create_or_update_identity(self):
-        if hasattr(self, '_identity_updated'):
-            return self.identity
-
         if not self.identity:
             self.identity = SQRLIdentity()
 

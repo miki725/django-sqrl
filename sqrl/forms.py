@@ -194,6 +194,17 @@ class RequestForm(forms.Form):
                 'Must supply urs (unlock request signature) to enable SQRL access.'
             )
 
+    def _clean_client_cmd_remove(self, client):
+        if not self.identity:
+            raise forms.ValidationError(
+                'Must have identity associated in order to remove SQRL.'
+            )
+
+        if not self.cleaned_data.get('urs'):
+            raise forms.ValidationError(
+                'Must supply urs (unlock request signature) to enable SQRL access.'
+            )
+
     def _clean_session(self):
         user_model = get_user_model()
 
