@@ -43,6 +43,10 @@ INSTALLED_APPS = (
     'sslserver',
 )
 
+AUTHENTICATION_BACKENDS = (
+    'sqrl.backends.SQRLModelBackend',
+)
+
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 
 STATIC_URL = '/static/'

@@ -250,7 +250,7 @@ class SQRLAuthView(View):
         # so we can login the user
         elif self.identity.user_id:
             user = self.identity.user
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            user.backend = 'sqrl.backends.SQRLModelBackend'
 
             session_auth_hash = user.get_session_auth_hash()
 
