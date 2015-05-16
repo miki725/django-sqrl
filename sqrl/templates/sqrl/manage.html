@@ -1,0 +1,61 @@
+{% extends "sqrl/sqrl_base.html" %}
+{% load sqrl %}
+{% load static %}
+
+{% block title %}Manage SQRL Identity{% endblock %}
+
+{% block content %}
+    <h1 xmlns="http://www.w3.org/1999/html">Manage SQRL Identity with your account</h1>
+
+    {% if not user.sqrl_identity %}
+        <p>
+            You dont have SQRL identity associated with your account yet.
+            Please use SQRL link/QR code below to associate SQRL identity with your account.
+        </p>
+    {% else %}
+        <p>
+            Congratulations! You already have SQRL identity associated with your account.
+            If you would like to either change or delete existing SQRL identity
+            associated with your account, you can do that by selecting appropriate
+            option in your SQRL client and then using the SQRL link/QR code below.
+        </p>
+
+        <p>
+            <strong>Note:</strong> For both changing or deleting your SQRL identity,
+            you will need to load your SQRL rescue code.
+        </p>
+
+        <p>
+            <strong>Caution:</strong> Normally it is not advised to change or delete
+            your SQRL identity. Usually these operations are only required when
+            SQRL identity is compromised.
+        </p>
+    {% endif %}
+
+    <p>
+        {% sqrl as sqrl %}
+        {% sqrl_status_url_script_tag sqrl %}
+        <a href="{{ sqrl.sqrl_url }}">
+            <img src="{% sqrl_qr_image_url sqrl %}">
+        </a>
+        {# redirect to manage page after successful SQRL transaction #}
+        <input type="hidden" name="next" value="{% url 'sqrl:manage' %}">
+    </p>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'sqrl/sqrl.js' %}"></script>
+{% endblock %}
+
+
+{% comment %}
+**sqrl/manage.html**
+Used to manage SQRL identity in relation to existing logged in account.
+When no SQRL identity is already associated with the account,
+it can be used to associate a new identity.
+When existing SQRL is already associated, this page can be used
+to either change or delete existing identity.
+
+No special variables are passed in the context for the association
+to work. All necessary data should already be in the context.
+{% endcomment %}

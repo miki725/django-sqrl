@@ -366,5 +366,5 @@ class SQRLCompleteRegistrationView(FormView):
         return redirect(self.get_success_url())
 
 
-class SQRLAssociateIdentityView(LoginRequiredMixin, TemplateView):
-    template_name = 'sqrl/associate_identity.html'
+class SQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
+    template_name = 'sqrl/manage.html'

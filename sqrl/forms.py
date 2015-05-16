@@ -214,7 +214,10 @@ class RequestForm(forms.Form):
 
         user = user_model.objects.filter(pk=user_id).first()
 
-        if not user or not user.sqrl_identity:
+        try:
+            if not user or not user.sqrl_identity:
+                return
+        except SQRLIdentity.DoesNotExist:
             return
 
         # We want to make sure that if the user is logged in

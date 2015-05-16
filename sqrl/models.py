@@ -87,7 +87,7 @@ class SQRLNut(models.Model):
                   'Used to set appropriate TIF response code.',
     )
     timestamp = models.DateTimeField(
-        auto_now=True, auto_now_add=True,
+        auto_now=True,
         help_text='Last timestamp when nut was either created or modified. '
                   'Used for purging purposes.',
     )

@@ -47,7 +47,7 @@ AUTHENTICATION_BACKENDS = (
     'sqrl.backends.SQRLModelBackend',
 )
 
-TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+SQRL_SERVER_FRIENDLY_NAME = 'Django SQRL Test Site'
 
 STATIC_URL = '/static/'
 SECRET_KEY = 'foo'
