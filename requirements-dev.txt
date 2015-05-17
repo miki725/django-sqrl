@@ -1,3 +1,4 @@
+-r requirements.txt
 django-extensions
 django-sslserver
 flake8
