@@ -9,6 +9,10 @@ from qrcode import ERROR_CORRECT_L, QRCode
 
 
 class Base64(object):
+    """
+    Helper class for base64 encoding/decoding
+    """
+
     @classmethod
     def encode(cls, s):
         """
@@ -35,14 +39,42 @@ class Base64(object):
 
 
 class Encoder(object):
+    """
+    Helper class for encoding/decoding SQRL response data.
+    """
+
     @classmethod
     def base64_dumps(cls, data):
+        """
+        Dumps given data into a single Base64 string.
+
+        Practically this is the same as :meth:`dumps` except :meth:`dumps`
+        can return multiline string for ``dict``. This method normalizes that
+        further by converting that multiline string to a single base64 encoded value.
+
+        Returns
+        -------
+        binary
+            Base64 encoded binary data of input ``data``
+        """
         if data and isinstance(data, dict):
             return Base64.encode(cls.dumps(data).encode('ascii'))
         return cls.dumps(data)
 
     @classmethod
     def dumps(cls, data):
+        """
+        Recursively dumps given data to SQRL response format.
+
+        Before data is dumped out, it is normalized by using :meth:`.normalize`.
+
+        This dumps each data type as follows:
+
+        :``dict``: returns an ``\\r\\n`` multiline string. Each line is for a single key-pair
+                   of format ``<key>=<dumped value>``.
+        :``list``: tilde (``~``) joined dumped list of values
+        :other: no operation
+        """
         data = cls.normalize(data)
 
         if isinstance(data, dict):
@@ -60,6 +92,18 @@ class Encoder(object):
 
     @classmethod
     def normalize(cls, data):
+        """
+        Recursively normalize data for encoding.
+
+        This encodes each data type as follows:
+
+        :``dict``: returns an ``OrderedDict`` where all values are recursively normalized.
+                   Empty dict is normalized to empty string
+        :``list``: each value is recursively normalized
+        :``binary``: Base64 encode data
+        :``str``: no operation
+        :other: data is casted to string using ``__str__`` (or ``__unicode__``)
+        """
         if isinstance(data, dict):
             if data:
                 return OrderedDict((
@@ -79,13 +123,33 @@ class Encoder(object):
 
 
 class QRGenerator(object):
-    def _generate_image(self, url):
+    """
+    Helper class for generating a QR image for the given SQRL url.
+
+    Parameters
+    ----------
+    url : str
+        URL for which to generate QR image
+    """
+
+    def __init__(self, url):
+        self.url = url
+
+    def _generate_image(self):
         qr = QRCode(error_correction=ERROR_CORRECT_L)
-        qr.add_data(url)
+        qr.add_data(self.url)
         return qr.make_image()
 
-    def generate_image(self, url):
-        img = self._generate_image(url)
+    def generate_image(self):
+        """
+        Generate QR image and get its binary data.
+
+        Returns
+        -------
+        bytes
+            Binary data of the png image file which can directly be returned to the user
+        """
+        img = self._generate_image(self.url)
         f = ContentFile(b'', name='qr.png')
         img.save(f, 'png')
         f.seek(0)
@@ -93,6 +157,13 @@ class QRGenerator(object):
 
 
 def get_user_ip(request):
+    """
+    Utility function for getting user's IP from request address.
+
+    This either returns the IP address from the ``request.REMOTE_ADDR``
+    or ``request.META'HTTP_X_REAL_IP']`` when request might of
+    been reverse proxied.
+    """
     return (
         request.META.get('HTTP_X_REAL_IP')
         or request.META['REMOTE_ADDR']
