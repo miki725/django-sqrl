@@ -10,6 +10,12 @@ from .managers import NutManager
 
 
 class SQRLIdentity(models.Model):
+    """
+    Attributes
+    ----------
+    in_only_sqrl : bool
+        Boolean indicating that only SQRL should be allowed to authenticate user
+    """
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='sqrl_identity')
 
     public_key = models.CharField(
@@ -52,6 +58,12 @@ class SQRLIdentity(models.Model):
 
 @python_2_unicode_compatible
 class SQRLNut(models.Model):
+    """
+    Attributes
+    ----------
+    session_key : str
+        Session key
+    """
     nonce = models.CharField(
         max_length=43, unique=True, db_index=True, primary_key=True,
         help_text='Single-use random nonce used to identify SQRL transaction. '
