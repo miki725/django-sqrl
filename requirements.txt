@@ -1,0 +1,6 @@
+Django
+django-braces
+ed25519
+Pillow
+qrcode
+six

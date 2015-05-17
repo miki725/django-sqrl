@@ -1,0 +1,8 @@
+django-extensions
+django-sslserver
+flake8
+Sphinx
+sphinx-autobuild
+sphinx-rtd-theme
+watchdog
+Werkzeug
