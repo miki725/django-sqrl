@@ -40,20 +40,49 @@ log = logging.getLogger(__name__)
 
 
 class SQRLLoginView(TemplateView):
+    """
+    Simple ``TemplateView`` which renders ``sqrl/login.html`` template.
+
+    The template can (and probably should) be customized in each Django Project.
+
+    .. note::
+        This templates only provides SQRL auth method. If other methods are required
+        on the same login page, it is probably better to add SQRL auth method to
+        existing login page vs customizing this template/view.
+    """
     template_name = 'sqrl/login.html'
 
 
 class SQRLQRGeneratorView(FormView):
+    """
+    View for serving generated QR image for the SQRL link.
+
+    The link is supplied via querystring ``url`` param which is then validated
+    via :obj:`.forms.GenerateQRForm`.
+    """
     form_class = GenerateQRForm
     http_method_names = ['get']
-    get = FormView.post
+
+    def get(self, request, *args, **kwargs):
+        """
+        Custom ``get`` implementation which simply uses
+        ``post`` since all form data should already be available
+        in ``request.GET``.
+        """
+        return self.post(request, *args, **kwargs)
 
     def get_form_kwargs(self):
+        """
+        Get form kwargs with ``data`` using ``request.GET`` as input.
+        """
         kwargs = super(SQRLQRGeneratorView, self).get_form_kwargs()
         kwargs.update({'data': self.request.GET})
         return kwargs
 
     def form_invalid(self, form):
+        """
+        Return ``400 Bad Request`` when invalid SQRL url is supplied.
+        """
         return HttpResponse(
             json.dumps(form.errors),
             status=400,
@@ -61,22 +90,85 @@ class SQRLQRGeneratorView(FormView):
         )
 
     def form_valid(self, form):
+        """
+        Return generated PNG QR image when url is successfully validated via form.
+        """
         image = QRGenerator().generate_image(form.cleaned_data['url'])
         return HttpResponse(image, content_type='image/png')
 
 
 class SQRLStatusView(View):
-    def get_after_login_url(self):
-        next_form = ExtractedNextUrlForm(self.request.GET)
-        if next_form.is_valid():
-            return next_form.cleaned_data['url']
+    """
+    Ajax view which returns the status of the SQRL transaction back to the user.
 
-        return settings.LOGIN_REDIRECT_URL
+    The state of the transaction is looked up by finding the appropriate
+    :obj:`.models.SQRLNut` by the transaction ID which is a kwarg in the url pattern.
+    When the nut is found, :attr:`.models.SQRLNut.is_transaction_complete` is
+    used to determine the state of the transaction.
+
+    This view is useful because when it returns a redirect upon successful completing
+    of SQRL transaction, js can dynamically redirect the user to that page.
+    Without this behaviour, user will have to manually refresh the page
+    which is inconvenient.
+
+    .. note::
+        Currently this view is being used via polling on js side
+        however this view's concept can easily be adopted to any other
+        real-time technology such as websockets.
+    """
+
+    def get_success_url(self):
+        """
+        Get the url to which the user will be redirect to after
+        successful SQRL transaction.
+
+        The url is computed using :obj:`.forms.ExtractedNextUrlForm`.
+        Following URLs are used depending if the form is valid:
+
+        :``True``: Next url within the ``?url=`` querystring parameter
+        :``False``: ``settings.LOGIN_REDIRECT_URL``
+
+        When however the user is not logged in, even after successful
+        SQRL transaction and has pending registration, user will be
+        redirected to ``sqrl-complete-registration`` view with the
+        ``?next=`` querystring parameter set to the url computed above.
+        """
+        next_form = ExtractedNextUrlForm(self.request.GET)
+
+        if next_form.is_valid():
+            url = next_form.cleaned_data['url']
+        else:
+            url = settings.LOGIN_REDIRECT_URL
+
+        if all([not self.request.user.is_authenticated(),
+                SQRL_IDENTITY_SESSION_KEY in self.request.session]):
+            return reverse('sqrl:complete-registration') + '?next={}'.format(url)
+        else:
+            return url
 
     def get_object(self):
+        """
+        Get the :obj:`.models.SQRLNut` by transaction is or raise ``404``.
+        """
         return get_object_or_404(SQRLNut, transaction_nonce=self.kwargs['transaction'])
 
     def post(self, request, transaction, *args, **kwargs):
+        """
+        Handle the request and return appropriate data back to the user.
+
+        Following keys can be returned:
+
+        :``transaction_complete``: boolean which is always returned
+        :``redirect_to``: also present when ``transaction_complete == True``
+                          and this is where the js should redirect the user to.
+
+        .. note::
+            This view is restricted to ajax calls as to restrict its
+            use from regular forms.
+        """
+        if not request.is_ajax():
+            return HttpResponse(status=405)  # method not allowed
+
         transaction = self.get_object()
 
         data = {
@@ -84,14 +176,9 @@ class SQRLStatusView(View):
         }
 
         if transaction.is_transaction_complete:
-            redirect_to = self.get_after_login_url()
-
-            if not request.user.is_authenticated() and SQRL_IDENTITY_SESSION_KEY in request.session:
-                redirect_to = reverse('sqrl:complete-registration') + '?next={}'.format(redirect_to)
-
             data.update({
                 'transaction_complete': True,
-                'redirect_to': redirect_to,
+                'redirect_to': self.get_success_url(),
             })
 
         return JsonResponse(data)
@@ -323,29 +410,70 @@ class SQRLAuthView(View):
 
 
 class SQRLCompleteRegistrationView(FormView):
+    """
+    This view is used to complete user registration.
+
+    That happens when SQRL transaction is successfully completed
+    however does not have account yet setup. In that case :obj:`.SQRLAuthView`
+    stores SQRL identity information in the session which this view can use.
+    To complete registration, a form is displayed to the user.
+    When form is successfully filled out, this view creates a new user and
+    automatically assigns the stored SQRL identity from the session to the
+    new user.
+    """
     form_class = RandomPasswordUserCreationForm
     template_name = 'sqrl/register.html'
     success_url = settings.LOGIN_REDIRECT_URL
 
-    def check_session_for_sqrl_identity(self):
+    def check_session_for_sqrl_identity_or_404(self):
+        """
+        Check if the SQRL identity is stored within the session
+        and if not, raise ``Http404``.
+        """
         if SQRL_IDENTITY_SESSION_KEY not in self.request.session:
             raise Http404
 
     def get(self, request, *args, **kwargs):
-        self.check_session_for_sqrl_identity()
+        """
+        Same as regular ``FormView`` except this also checks for identity within session
+        by using :meth:`.check_session_for_sqrl_identity_or_404`.
+        """
+        self.check_session_for_sqrl_identity_or_404()
         return super(SQRLCompleteRegistrationView, self).get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        self.check_session_for_sqrl_identity()
+        """
+        Same as regular ``FormView`` except this also checks for identity within session
+        by using :meth:`.check_session_for_sqrl_identity_or_404`.
+        """
+        self.check_session_for_sqrl_identity_or_404()
         return super(SQRLCompleteRegistrationView, self).post(request, *args, **kwargs)
 
     def get_success_url(self):
+        """
+        Get success url to which user will be redirected to when registration is complete.
+
+        The url from the ``?next=`` is used if :obj:`.forms.NextUrlForm` is valid.
+        Otherwise :attr:`.success_url` is used.
+        """
         next_form = NextUrlForm(self.request.GET)
         if next_form.is_valid():
             return next_form.cleaned_data['next']
         return self.success_url
 
     def form_valid(self, form):
+        """
+        When registration form is valid, this method finishes up
+        creating new user with new SQRL identity.
+
+        It does the following:
+
+        #. decodes the stored SQRL identity in the session.
+           If this step fails, this method returns ``500`` response.
+        #. saves the new user and assigned the decoded identity to it
+        #. logs in the new user
+        #. redirects to url returned by :meth:`.get_success_url`
+        """
         try:
             identity = next(iter(serializers.deserialize(
                 'json', self.request.session.pop(SQRL_IDENTITY_SESSION_KEY)
@@ -367,4 +495,13 @@ class SQRLCompleteRegistrationView(FormView):
 
 
 class SQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
+    """
+    Simple ``TemplateView`` which renders ``sqrl/manage.html`` template.
+
+    The template can (and probably should) be customized in each Django Project.
+
+    .. warning::
+        Since this view is to exclusively manage SQRL identity,
+        no other auth methods should be added to this template/view.
+    """
     template_name = 'sqrl/manage.html'
