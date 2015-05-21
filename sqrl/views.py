@@ -185,18 +185,69 @@ class SQRLStatusView(View):
 
 
 class SQRLAuthView(View):
+    """
+    This is the main view responsible for all interactions with SQRL client.
+
+    The responsibilities of this view are:
+
+    * validate that URL is correct since nut value is part of querystring
+      which cannot be matched in url patterns.
+      When invalid, 404 should be returned.
+    * find the nut via nut nonce or return transient error TIF
+    * validate client payload by using :obj:`.forms.RequestForm` which
+      includes validating validity of signatures and looking up stored
+      SQRL identities.
+    * executing all SQRL commands such as ``query``, ``ident``, etc
+      as instructed in the SQRL payload.
+      If any of the commands are not supported not supported TIF
+      is returned.
+    * finalize the any remaining state such as saving identity objects
+      if all commands successfully completed
+    * returning response back to the user
+    """
     http_method_names = ['post']
 
-    def dispatch(self, request, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        super(SQRLAuthView, self).__init__(*args, **kwargs)
+
         self.tif = TIF(0)
+
+        self.nut_value = None
+        self.nut = None
+        self.client = None
         self.identity = None
+        self.previous_identity = None
+        self.session = None
+        self.is_disabled = False
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Standard ``dispatch`` with custom exception handling
+        for :obj:`.exceptions.TIFException` in which error response is returned
+        with TIF code as specified in the exception.
+        """
         try:
             return super(SQRLAuthView, self).dispatch(request, *args, **kwargs)
         except TIFException as e:
             self.tif = self.tif.update(e.tif)
             return self.render_to_response()
 
-    def get_server_data(self, data=None):
+    def get_server_data(self):
+        """
+        Get data to be returned back to SQRL client.
+
+        This method does not encode for the response. It simply returns
+        a dictionary of information which later on can be used by
+        :obj:`.response.SQRLHttpResponse` to actually construct
+        data to be sent back to the client.
+
+        Returns
+        -------
+        OrderedDict
+            Dict of data to be sent back to SQRL client.
+            The ``Ordered`` part is important as SQRL requires
+            to send some data first such as SQRL version number.
+        """
         if self.nut:
             self.nut.renew()
             nut = self.nut.nonce
@@ -205,7 +256,7 @@ class SQRLAuthView(View):
             nut = self.nut_value
             qry = self.request.get_full_path()
 
-        _data = OrderedDict((
+        data = OrderedDict((
             ('ver', 1),
             ('nut', nut),
             ('tif', self.tif.as_hex_string()),
@@ -215,21 +266,44 @@ class SQRLAuthView(View):
         ))
 
         if self.identity:
-            _data['suk'] = self.identity.server_unlock_key
+            data['suk'] = self.identity.server_unlock_key
 
-        if data is not None:
-            _data.update(data)
+        return data
 
-        return _data
+    def render_to_response(self):
+        """
+        Render a response which will be send to SQRL client.
 
-    def render_to_response(self, data=None):
+        Internally this method uses :meth:`.get_server_data` to construct the response
+        data and :obj:`.response.SQRLHttpResponse` to render that data into
+        SQRL-compatible format.
+
+        Returns
+        -------
+        SQRLHttpResponse
+            Completely rendered response ready to the sent to the SQRL client
+        """
         return SQRLHttpResponse(self.nut, self.get_server_data(data))
 
     def do_ips_match(self):
+        """
+        This method updates internal TIF state with :attr:`.exceptions.TIF.IP_MATCH` bit.
+
+        The bit is only set when the IP address of the SQRL client making request
+        to this view matches IP address of device used to initiate SQRL transation
+        (where SQRL link/QR code were generated).
+        """
         if get_user_ip(self.request) == self.nut.ip_address:
             self.tif = self.tif.update(TIF.IP_MATCH)
 
     def do_ids_match(self):
+        """
+        This method updates internal TIF state with :attr:`.exceptions.TIF.ID_MATCH`
+        and :attr:`.exceptions.TIF.PREVIOUS_ID_MATCH` bits.
+
+        The appropriate bits are only set when the the corresponding identity is found
+        on the server.
+        """
         if self.identity:
             self.tif = self.tif.update(TIF.ID_MATCH)
 
@@ -237,6 +311,17 @@ class SQRLAuthView(View):
             self.tif = self.tif.update(TIF.PREVIOUS_ID_MATCH)
 
     def is_sqrl_disabled(self):
+        """
+        This method updates internal TIF state with :attr:`.exceptions.TIF.SQRL_DISABLED` bit.
+
+        The bit is only set when either current or previous identity are found
+        and they have :attr:`.models.SQRLIdentity.is_enabled` set as ``False``
+        which means previously SQRL client requested server to disable SQRL
+        auth method for that user.
+
+        Also this method sets ``self.is_disabled`` attribute which later on can be
+        used by other methods to customize their behaviour.
+        """
         self.is_disabled = False
 
         if self.identity and not self.identity.is_enabled:
@@ -248,6 +333,25 @@ class SQRLAuthView(View):
             self.is_disabled = True
 
     def get_nut_or_error(self):
+        """
+        This method finds the :obj:`.models.SQRLNut` by nut nonce in the
+        querystring or if not not raises appropriate :obj:`.exceptions.TIFException`.
+
+        When nut is found, it is saved as ``self.nut``. In addition, this method
+        triggers :meth:`.do_ips_match` to update internal TIF state.
+
+        Returns
+        -------
+        SQRLNut
+            Found :obj:`.models.SQRLNut` via nut nonce from querystring
+
+        Raises
+        ------
+        TIFException
+            :obj:`.exceptions.TIFException` with :attr:`.exceptions.TIF.TRANSIENT_FAILURE`
+            and :attr:`.exceptions.TIF.COMMAND_FAILED` bits sets as ``True``
+            when nut is not found.
+        """
         self.nut = (SQRLNut.objects
                     .filter(nonce=self.nut_value,
                             is_transaction_complete=False)
@@ -262,6 +366,36 @@ class SQRLAuthView(View):
         return self.nut
 
     def post(self, request, *args, **kwargs):
+        """
+        Main view handler since all SQRL requests are ``POST`` requests.
+
+        This method does not implement a lot of logic. It mostly relies on other
+        methods which it then orchestrates. For information on what responsibilities
+        which method has, you can take a look at :obj:`.SQRLAuthView` description.
+
+        Some implementation details worth mentioning:
+
+        * This method uses multiple forms to validate different sections of the payload.
+          Specifically it uses :obj:`.forms.AuthQueryDictForm` to validate the presence
+          of ``?nut=`` within querystring; and :obj:`.forms.RequestForm` to validate
+          the SQRL payload itself.
+        * This method extensively uses :obj:`.exceptions.TIFException` to immediately
+          return some sort of error to the user which is handled by :meth:`.dispatch`.
+          The only exception to that is that it still raises ``Http404`` when nut pattern
+          is not validated. Normally in Django that would of been validated in url patterns
+          however since SQRL forces to use ``?nut=`` querystring, we mimic same behaviour
+          404 Not Found in the view.
+        * To atomically process all SQRL commands (all or nothing), this view
+          implements all SQRL commands as dedicated methods (e.g. :meth:`.query`).
+          That allows this method to find all appropriate handlers for all the commands
+          and if not all are found, :obj:`.exceptions.TIFException` can be raised
+          with :attr:`.exceptions.TIF.NOT_SUPPORTED` bit set as ``True``.
+          If all are found, then it simply processes them in the order they were requested.
+        * Since any SQRL command can potentially fail, none of the SQRL command handlers
+          save any state in either the session or models because other commands can fail
+          after them. If all succeed, this method then explicitly finalizes/saves all the
+          state which includes session and models.
+        """
         log.debug('-' * 50)
         log.debug('Raw request body:\n{}'.format(request.body))
 
@@ -319,9 +453,17 @@ class SQRLAuthView(View):
         return self.render_to_response()
 
     def query(self):
-        pass
+        """
+        Handler for SQRL ``query`` command.
+
+        Since all necessary information by default is already returned to the user,
+        this method does not have to do anything.
+        """
 
     def ident(self):
+        """
+        Handler for SQRL ``ident`` command.
+        """
         if self.is_disabled:
             return
 
@@ -359,30 +501,85 @@ class SQRLAuthView(View):
         self.nut.is_transaction_complete = True
 
     def disable(self):
+        """
+        Handler for SQRL ``disable`` command.
+
+        By the time this handler is called, :obj:`.forms.RequestForm` is already validated
+        which guarantees that in order to use ``disable``, user must already have associated
+        :obj:`.models.SQRLIdentity` so this method simply sets :attr:`.models.SQRLIdentity.is_enabled`
+        to ``False``. Then if the rest of the SQRL commands succeed, :meth:`.finalize` will
+        save that change.
+        """
         self.create_or_update_identity()
         self.identity.is_enabled = False
 
         self.nut.is_transaction_complete = True
 
     def enable(self):
+        """
+        Handler for SQRL ``enable`` command.
+
+        By the time this handler is called, :obj:`.forms.RequestForm` is already validated
+        which guarantees that in order to use ``enable``, user must already have associated
+        :obj:`.models.SQRLIdentity` and that the user correctly supplied ``urs`` signature.
+        Therefore this method simply sets :attr:`.models.SQRLIdentity.is_enabled` to ``True``.
+        Then if the rest of the SQRL commands succeed, :meth:`.finalize` will save that change.
+        """
         self.create_or_update_identity()
         self.identity.is_enabled = True
 
         self.nut.is_transaction_complete = True
 
     def remove(self):
-        self.identity.delete()
-        self.identity = None
+        """
+        Handler for SQRL ``remove`` command.
+
+        By the time this handler is called, :obj:`.forms.RequestForm` is already validated
+        which guarantees that in order to use ``remove``, user must already have associated
+        :obj:`.models.SQRLIdentity`, that the user correctly supplied ``urs`` signature
+        and that that ``remove`` is the only command.
+        Since all finalizing of the state should be handled by :meth:`.finalize`, this method
+        does not actually delete the identity model but marks it for deletion.
+        """
+        self.identity.to_remove = True
 
         self.nut.is_transaction_complete = True
 
     def finalize(self):
-        if self.identity and self.identity.user_id:
-            self.identity.save()
+        """
+        State finalization method.
+
+        This is necessary since SQRL can request multiple commands at the same time
+        and any of them can fail. Therefore no state should be saved in any of the
+        command handlers. They should adjust the state but not actually save it.
+        Instead this method saves all the state. This allows the SQRL request
+        processing to be atomic. Current it saves:
+
+        * :obj:`.models.SQRLIdentity`
+        * session data
+        """
+        if self.identity:
+            if self.identity.to_remove:
+                self.identity.delete()
+            elif self.identity.user_id:
+                self.identity.save()
         if self.session:
             self.session.save()
 
     def create_or_update_identity(self):
+        """
+        This method updates existing :obj:`.models.SQRLIdentity` or creates it
+        when not already present.
+
+        This is used to handle:
+
+        * new users creating their :obj:`.models.SQRLIdentity` in which case
+          all of the data will be set from scratch such as
+          :attr:`.models.SQRLIdentity.public_key`, etc
+        * existing users since they could be sending specific SQRL options
+          (e.g. ``sqrlonly``) which should always update :obj:`.models.SQRLIdentity`
+          depending on the presence of the options in the request.
+        """
         if not self.identity:
             self.identity = SQRLIdentity()
 
@@ -429,6 +626,11 @@ class SQRLCompleteRegistrationView(FormView):
         """
         Check if the SQRL identity is stored within the session
         and if not, raise ``Http404``.
+
+        Raises
+        ------
+        Http404
+            When SQRL identity is not stored in session
         """
         if SQRL_IDENTITY_SESSION_KEY not in self.request.session:
             raise Http404

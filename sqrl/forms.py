@@ -266,6 +266,11 @@ class RequestForm(forms.Form):
                 'Cannot send suk or vuk when SQRL identity is already associated.'
             )
 
+        if 'disable' in client['cmd']:
+            raise forms.ValidationError(
+                'Cannot use disable command at the same time as ident command.'
+            )
+
         # since we only store a single identity at the time
         # its impossible for when identity is being changed
         # self.identity will exist since by definition server
@@ -285,6 +290,11 @@ class RequestForm(forms.Form):
                 'Must have identity associated in order to disable SQRL.'
             )
 
+        if 'enable' in client['cmd']:
+            raise forms.ValidationError(
+                'Cannot use enable command at the same time as disable command.'
+            )
+
     def _clean_client_cmd_enable(self, client):
         if not self.identity:
             raise forms.ValidationError(
@@ -296,6 +306,11 @@ class RequestForm(forms.Form):
                 'Must supply urs (unlock request signature) to enable SQRL access.'
             )
 
+        if 'disable' in client['cmd']:
+            raise forms.ValidationError(
+                'Cannot use disable command at the same time as enable command.'
+            )
+
     def _clean_client_cmd_remove(self, client):
         if not self.identity:
             raise forms.ValidationError(
@@ -305,6 +320,11 @@ class RequestForm(forms.Form):
         if not self.cleaned_data.get('urs'):
             raise forms.ValidationError(
                 'Must supply urs (unlock request signature) to enable SQRL access.'
+            )
+
+        if client['cmd'] != ['remove']:
+            raise forms.ValidationError(
+                'Cannot use any other commands at the same time as remove command.'
             )
 
     def _clean_session(self):
