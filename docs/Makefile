@@ -195,4 +195,4 @@ autodoc:
 	sphinx-apidoc --module-first --separate --output-dir=api ../sqrl
 
 livehtml:
-	sphinx-autobuild -p 9000 -z ../sqrl -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	sphinx-autobuild -p 9000 -z ../ -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
