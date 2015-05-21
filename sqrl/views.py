@@ -283,7 +283,7 @@ class SQRLAuthView(View):
         SQRLHttpResponse
             Completely rendered response ready to the sent to the SQRL client
         """
-        return SQRLHttpResponse(self.nut, self.get_server_data(data))
+        return SQRLHttpResponse(self.nut, self.get_server_data())
 
     def do_ips_match(self):
         """
