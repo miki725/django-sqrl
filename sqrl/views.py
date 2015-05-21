@@ -93,7 +93,7 @@ class SQRLQRGeneratorView(FormView):
         """
         Return generated PNG QR image when url is successfully validated via form.
         """
-        image = QRGenerator().generate_image(form.cleaned_data['url'])
+        image = QRGenerator(form.cleaned_data['url']).generate_image()
         return HttpResponse(image, content_type='image/png')
 
 
@@ -559,7 +559,7 @@ class SQRLAuthView(View):
         * session data
         """
         if self.identity:
-            if self.identity.to_remove:
+            if getattr(self.identity, 'to_remove', False):
                 self.identity.delete()
             elif self.identity.user_id:
                 self.identity.save()

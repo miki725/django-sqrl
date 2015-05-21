@@ -149,7 +149,7 @@ class QRGenerator(object):
         bytes
             Binary data of the png image file which can directly be returned to the user
         """
-        img = self._generate_image(self.url)
+        img = self._generate_image()
         f = ContentFile(b'', name='qr.png')
         img.save(f, 'png')
         f.seek(0)

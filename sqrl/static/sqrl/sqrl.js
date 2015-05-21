@@ -19,6 +19,7 @@
         }
 
         request.open('POST', url, false);
+        request.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         request.onreadystatechange = handleStateChange;
 
         function handleStateChange() {
