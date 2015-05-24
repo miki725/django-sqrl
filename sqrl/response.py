@@ -36,7 +36,7 @@ class SQRLHttpResponse(HttpResponse):
         normalized_data = Encoder.normalize(self.sign_response(nut, data))
         content = Encoder.base64_dumps(normalized_data)
 
-        kwargs.setdefault('content_type', 'text/plain')
+        kwargs.setdefault('content_type', 'application/sqrl')
 
         super(SQRLHttpResponse, self).__init__(content, *args, **kwargs)
 

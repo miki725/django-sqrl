@@ -187,7 +187,7 @@ class RequestForm(forms.Form):
         server = self.data['server']
         msg = (client + server).encode('ascii')
 
-        if not Ed25519(key, msg).is_signature_valid(signature):
+        if not Ed25519(key, None, msg).is_signature_valid(signature):
             raise forms.ValidationError('Invalid {} signature.'.format(name))
 
     def clean_ids(self):
@@ -239,7 +239,7 @@ class RequestForm(forms.Form):
                     'Cannot validate urs signature without server knowing vuk and suk keys.'
                 )
 
-            self._validate_signature('urs', vuk, urs)
+            self._validate_signature('urs', Base64.decode(vuk), urs)
 
         return urs
 
@@ -328,13 +328,11 @@ class RequestForm(forms.Form):
             )
 
     def _clean_session(self):
-        user_model = get_user_model()
-
         user_id = self.session.get(SESSION_KEY)
         if not user_id:
             return
 
-        user = user_model.objects.filter(pk=user_id).first()
+        user = get_user_model().objects.filter(pk=user_id).first()
 
         try:
             if not user or not user.sqrl_identity:

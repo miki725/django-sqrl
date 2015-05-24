@@ -23,6 +23,7 @@ class Base64(object):
         s: bytes
             Bytes string to be encoded as base64
         """
+        assert isinstance(s, (six.binary_type, bytearray))
         return urlsafe_b64encode(s).decode('ascii').rstrip('=')
 
     @classmethod
@@ -35,6 +36,7 @@ class Base64(object):
         s: str
             Unicode string to be decoded from base64
         """
+        assert isinstance(s, six.text_type)
         return urlsafe_b64decode((s + '=' * (4 - len(s) % 4)).encode('ascii'))
 
 
@@ -78,13 +80,10 @@ class Encoder(object):
         data = cls.normalize(data)
 
         if isinstance(data, dict):
-            if data:
-                return '\r\n'.join(
-                    '{}={}'.format(k, cls.dumps(v))
-                    for k, v in data.items()
-                ) + '\r\n'
-            else:
-                return ''
+            return '\r\n'.join(
+                '{}={}'.format(k, cls.dumps(v))
+                for k, v in data.items()
+            ) + '\r\n'
         elif isinstance(data, (list, tuple)):
             return '~'.join(cls.dumps(i) for i in data)
         else:

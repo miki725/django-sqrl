@@ -4,9 +4,9 @@ from __future__ import print_function, unicode_literals
 from django.conf.urls import patterns, url
 
 from .views import (
-    SQRLIdentityManagementView,
     SQRLAuthView,
     SQRLCompleteRegistrationView,
+    SQRLIdentityManagementView,
     SQRLLoginView,
     SQRLQRGeneratorView,
     SQRLStatusView,

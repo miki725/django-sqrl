@@ -78,14 +78,17 @@ class Ed25519(object):
 
     Parameters
     ----------
-    key : bytes
-        Key for generating signature.
+    public_key : bytes
+        Key used for verifying signature.
+    private_key : bytes
+        Key used for signing data.
     msg : bytes
         Binary data for which to generate the signature.
     """
 
-    def __init__(self, key, msg):
-        self.key = key
+    def __init__(self, public_key, private_key, msg):
+        self.public_key = public_key
+        self.private_key = private_key
         self.msg = msg
 
     def is_signature_valid(self, other_signature):
@@ -98,7 +101,7 @@ class Ed25519(object):
             Boolean indicating whether validation has succeeded.
         """
         try:
-            vk = ed25519.VerifyingKey(self.key)
+            vk = ed25519.VerifyingKey(self.public_key)
             vk.verify(other_signature, self.msg)
         except (AssertionError, ed25519.BadSignatureError):
             return False
@@ -114,7 +117,7 @@ class Ed25519(object):
         bytes
             ed25519 signature
         """
-        sk = ed25519.SigningKey(self.key)
+        sk = ed25519.SigningKey(self.private_key)
         return sk.sign(self.msg)
 
 
