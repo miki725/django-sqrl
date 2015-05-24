@@ -116,6 +116,7 @@ class SQRLStatusView(View):
         however this view's concept can easily be adopted to any other
         real-time technology such as websockets.
     """
+    success_url = settings.LOGIN_REDIRECT_URL
 
     def get_success_url(self):
         """
@@ -138,7 +139,7 @@ class SQRLStatusView(View):
         if next_form.is_valid():
             url = next_form.cleaned_data['url']
         else:
-            url = settings.LOGIN_REDIRECT_URL
+            url = self.success_url
 
         if all([not self.request.user.is_authenticated(),
                 SQRL_IDENTITY_SESSION_KEY in self.request.session]):
@@ -680,7 +681,7 @@ class SQRLCompleteRegistrationView(FormView):
             identity = next(iter(serializers.deserialize(
                 'json', self.request.session.pop(SQRL_IDENTITY_SESSION_KEY)
             ))).object
-        except:
+        except Exception:
             return HttpResponse(status=500)
 
         user = form.save()
