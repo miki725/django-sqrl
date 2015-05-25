@@ -68,6 +68,17 @@ Now that SQRL is installed in a Django project you can use it in any login page 
 
 The above template will add a QR image as a link which when used with SQRL client, will allow users to authenticate using SQRL.
 
+Management Command
+~~~~~~~~~~~~~~~~~~
+
+SQRL uses server state to keep track of open SQRL transactions in order to mitigate replay attacks. Since this state will constantly grow if not cleared, ``django-sqrl`` provides a helper management command to clear expired state::
+
+    $ python manage.py clearsqrlnuts
+
+It is recommended to run this command as repeating task. Here is recommended cron config::
+
+    */5 * * * * python manage.py clearsqrlnuts >/dev/null 2>&1
+
 Testing
 -------
 
