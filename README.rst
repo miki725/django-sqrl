@@ -2,6 +2,12 @@
 Django SQRL
 ===========
 
+.. image:: https://travis-ci.org/miki725/django-sqrl.svg?branch=master
+    :target: https://travis-ci.org/miki725/django-sqrl
+
+.. image:: https://coveralls.io/repos/miki725/django-sqrl/badge.svg
+    :target: https://coveralls.io/r/miki725/django-sqrl
+
 SQRL authentication support for Django
 
 * Free software: MIT license

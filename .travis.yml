@@ -12,7 +12,11 @@ env:
 install:
   - pip install $DJANGO
   - pip install -r requirements-dev.txt
+  - pip install coveralls
   - pip freeze
 
 # command to run tests, e.g. python setup.py test
 script: make check
+
+after_success:
+  coveralls
