@@ -1,9 +1,12 @@
 -r requirements.txt
+coverage
 django-extensions
 django-sslserver
 flake8
+mock
 Sphinx
 sphinx-autobuild
 sphinx-rtd-theme
+tox
 watchdog
 Werkzeug
