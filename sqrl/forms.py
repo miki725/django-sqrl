@@ -5,9 +5,9 @@ from django import forms
 from django.contrib.auth import SESSION_KEY, get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.utils.crypto import get_random_string
 
 from .crypto import HMAC, Ed25519
+from .exceptions import TIF
 from .fields import (
     Base64ConditionalPairsField,
     Base64Field,
@@ -114,6 +114,7 @@ class RequestForm(forms.Form):
         self.session = None
         self.identity = None
         self.previous_identity = None
+        self.tif = TIF(0)
         super(RequestForm, self).__init__(*args, **kwargs)
 
     def clean_client(self):
@@ -328,9 +329,24 @@ class RequestForm(forms.Form):
             )
 
     def _clean_session(self):
+        if not self.session:
+            return
+
         user_id = self.session.get(SESSION_KEY)
         if not user_id:
             return
+
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return
+
+        if self.identity and self.identity.user_id != user_id:
+            self.tif = self.tif.update(TIF.BAD_ID_ASSOCIATION)
+            raise forms.ValidationError(
+                'Cannot use SQRL within existing authenticated session'
+                'when SQRL identity is already associated with a different account'
+            )
 
         user = get_user_model().objects.filter(pk=user_id).first()
 
@@ -360,6 +376,7 @@ class RequestForm(forms.Form):
         pidk = Base64.encode(self.cleaned_data['client'].get('pidk', b''))
 
         if user.sqrl_identity.public_key not in [idk, pidk]:
+            self.tif = self.tif.update(TIF.BAD_ID_ASSOCIATION)
             raise forms.ValidationError(
                 'Both current and previous identities do not match user\'s already '
                 'associated SQRL identity. If the identity needs to be changed, '
@@ -425,36 +442,35 @@ class RequestForm(forms.Form):
         ).first()
 
 
-class RandomPasswordUserCreationForm(UserCreationForm):
+class PasswordLessUserCreationForm(UserCreationForm):
     """
     Form for creating user account without password.
 
     This form is used when user successfully completes SQRL transaction
     however does not yet have a user account. Since they already successfully
     used SQRL, this implies that they they prefer to use SQRL over
-    username/password. Django however requires password in order to create
-    a user so we simply generate a random one. If the user will later wish
-    to authenticate via password, they will need to follow password-reset
-    procedure.
+    username/password. Therefore we simply create a user with unusable
+    password using Django's ``set_unusable_password`` capability.
     """
 
     def __init__(self, *args, **kwargs):
-        super(RandomPasswordUserCreationForm, self).__init__(*args, **kwargs)
+        super(PasswordLessUserCreationForm, self).__init__(*args, **kwargs)
         # loop over all the fields and remove all password fields
         # by default this removes both password and verify_password fields
         for field in self.fields:
             if 'password' in field:
                 self.fields.pop(field)
 
-    def clean(self):
+    def save(self, commit=True):
         """
-        This method assigns a random password when complete form is validated.
+        Custom user save implementation which saves user with unusable password.
+
+        The implementation is very similar to how ``UserCreationForm`` saves
+        a user model, except this method uses :meth:`AbstractBaseUser.set_unusable_password`
+        to set a users password field.
         """
-        cleaned_data = super(RandomPasswordUserCreationForm, self).clean()
-
-        # Create artificial password.
-        # If user will want to use non-SQRL password,
-        # they will need to reset the password.
-        cleaned_data['password1'] = get_random_string(length=25)
-
-        return cleaned_data
+        user = super(UserCreationForm, self).save(commit=False)
+        user.set_unusable_password()
+        if commit:
+            user.save()
+        return user

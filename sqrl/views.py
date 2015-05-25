@@ -19,13 +19,14 @@ from django.http import Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import FormView, TemplateView, View
 
+from .backends import SQRL_MODEL_BACKEND
 from .exceptions import TIF, TIFException
 from .forms import (
     AuthQueryDictForm,
     ExtractedNextUrlForm,
     GenerateQRForm,
     NextUrlForm,
-    RandomPasswordUserCreationForm,
+    PasswordLessUserCreationForm,
     RequestForm,
 )
 from .models import SQRLIdentity, SQRLNut
@@ -428,6 +429,8 @@ class SQRLAuthView(View):
         if not self.payload_form.is_valid():
             log.debug('Request payload validation failed with {}'
                       ''.format(repr(self.payload_form.errors)))
+            if self.payload_form.tif:
+                raise TIFException(TIF.COMMAND_FAILED | self.payload_form.tif)
             raise TIFException(TIF.COMMAND_FAILED | TIF.CLIENT_FAILURE)
 
         log.debug('Request payload successfully parsed and validated:\n{}'
@@ -480,7 +483,7 @@ class SQRLAuthView(View):
         # so we can login the user
         elif self.identity.user_id:
             user = self.identity.user
-            user.backend = 'sqrl.backends.SQRLModelBackend'
+            user.backend = SQRL_MODEL_BACKEND
 
             session_auth_hash = user.get_session_auth_hash()
 
@@ -599,9 +602,9 @@ class SQRLAuthView(View):
         # the reason we don't simply want to always overwrite these is
         # because for already associated identities, client will not supply
         # them so we dont want to overwrite the model with empty values
-        if self.client.get('vuk') and not self.identity.verify_unlock_key:
+        if self.client.get('vuk'):
             self.identity.verify_unlock_key = Base64.encode(self.client['vuk'])
-        if self.client.get('suk') and not self.identity.server_unlock_key:
+        if self.client.get('suk'):
             self.identity.server_unlock_key = Base64.encode(self.client['suk'])
 
         return self.identity
@@ -619,7 +622,7 @@ class SQRLCompleteRegistrationView(FormView):
     automatically assigns the stored SQRL identity from the session to the
     new user.
     """
-    form_class = RandomPasswordUserCreationForm
+    form_class = PasswordLessUserCreationForm
     template_name = 'sqrl/register.html'
     success_url = settings.LOGIN_REDIRECT_URL
 
@@ -685,7 +688,8 @@ class SQRLCompleteRegistrationView(FormView):
             return HttpResponse(status=500)
 
         user = form.save()
-        user.backend = 'django.contrib.auth.backends.ModelBackend'
+        user.backend = SQRL_MODEL_BACKEND
+
         identity.user = user
         identity.save()
 
@@ -708,3 +712,14 @@ class SQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
         no other auth methods should be added to this template/view.
     """
     template_name = 'sqrl/manage.html'
+
+
+class AdminSiteSQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
+    template_name = 'admin/auth/user/sqrl_manage.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(AdminSiteSQRLIdentityManagementView, self).get_context_data(**kwargs)
+        context.update({
+            'has_permission': True,
+        })
+        return context

@@ -2,22 +2,26 @@
 {% load sqrl %}
 {% load static %}
 
-{% block title %}Login via SQRL{% endblock %}
+{% block title %}Log in via SQRL{% endblock %}
 
 {% block content %}
-    <h1>Login</h1>
+    <h1>Log in</h1>
 
     <p>
         Please use via SQRL using the information below.
     </p>
 
-    <p>
-        {% sqrl as sqrl %}
-        {% sqrl_status_url_script_tag sqrl %}
-        <a href="{{ sqrl.sqrl_url }}">
-            <img src="{% sqrl_qr_image_url sqrl %}">
-        </a>
-    </p>
+    {% sqrl as sqrl %}
+    <form method="get" action="{{ sqrl.sqrl_url }}">
+        <p>
+            {% sqrl_status_url_script_tag sqrl %}
+            <a href="{{ sqrl.sqrl_url }}">
+                <img src="{% sqrl_qr_image_url sqrl %}">
+            </a>
+        </p>
+        <input type="hidden" name="nut" value="{{ sqrl.nut.nonce }}">
+        <input type="submit" value="Log in using SQRL">
+    </form>
 {% endblock %}
 
 {% block scripts %}

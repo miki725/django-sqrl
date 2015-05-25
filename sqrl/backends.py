@@ -41,3 +41,6 @@ class SQRLModelBackend(ModelBackend):
                 return
 
         return user
+
+
+SQRL_MODEL_BACKEND = '{}.{}'.format(SQRLModelBackend.__module__, SQRLModelBackend.__name__)

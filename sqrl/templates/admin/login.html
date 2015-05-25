@@ -57,7 +57,9 @@
             </div>
         </form>
 
-        <div class="sqrl">
+        {% sqrl as sqrl %}
+
+        <form method="get" action="{{ sqrl.sqrl_url }}" class="sqrl">
             <p class="align-center or">
                 <span class="line-center">or</span>
             </p>
@@ -71,13 +73,17 @@
                 </p>
 
                 <p class="img">
-                    {% sqrl as sqrl %}
                     <a href="{{ sqrl.sqrl_url }}">
                         <img src="{% sqrl_qr_image_url sqrl %}">
                     </a>
                 </p>
+
+                <div class="submit-row">
+                    <input type="hidden" name="nut" value="{{ sqrl.nut.nonce }}">
+                    <input type="submit" value="{% trans 'Log in using SQRL' %}"/>
+                </div>
             </div>
-        </div>
+        </form>
 
         {% sqrl_status_url_script_tag sqrl %}
         <script type="text/javascript">

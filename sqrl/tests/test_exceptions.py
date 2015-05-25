@@ -27,6 +27,7 @@ class TestTIF(unittest.TestCase):
             'transient_failure': True,
             'command_failed': False,
             'client_failure': False,
+            'bad_id_association': False,
         })
 
     def test_update(self):
@@ -44,6 +45,7 @@ class TestTIF(unittest.TestCase):
         self.assertTrue(TIF(TIF.TRANSIENT_FAILURE).is_transient_failure)
         self.assertTrue(TIF(TIF.COMMAND_FAILED).is_command_failed)
         self.assertTrue(TIF(TIF.CLIENT_FAILURE).is_client_failure)
+        self.assertTrue(TIF(TIF.BAD_ID_ASSOCIATION).is_bad_id_association)
 
 
 class TestTIFException(unittest.TestCase):

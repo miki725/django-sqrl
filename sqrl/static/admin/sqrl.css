@@ -8,6 +8,10 @@
     height: 0;
 }
 
+.login #container {
+    margin-top: 30px;
+}
+
 .login .submit-row {
     text-align: center;
     clear: both;
@@ -19,6 +23,10 @@
     padding: 0 10px;
     background: #ffffff;
     display: inline-block;
+}
+
+.sqrl {
+    margin-bottom: 15px;
 }
 
 .sqrl .or {
@@ -46,8 +54,13 @@
 
 .sqrl .img {
     text-align: center;
+    margin-bottom: 0;
 }
 
 .sqrl .img img {
     width: 60%;
+}
+
+.sqrl .submit-row {
+    padding-top: 0;
 }

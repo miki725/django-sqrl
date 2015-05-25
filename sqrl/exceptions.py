@@ -83,6 +83,8 @@ class TIF(int):
     """SQRL command failed for any reason"""
     CLIENT_FAILURE = 0x80
     """SQRL command failed because SQRL client sent invalid data"""
+    BAD_ID_ASSOCIATION = 0x100
+    """SQRL Identity is already a ssociated with a different account"""
 
     is_id_match = property(_make_tif_property(ID_MATCH))
     is_previous_id_match = property(_make_tif_property(PREVIOUS_ID_MATCH))
@@ -92,6 +94,7 @@ class TIF(int):
     is_command_failed = property(_make_tif_property(COMMAND_FAILED))
     is_client_failure = property(_make_tif_property(CLIENT_FAILURE))
     is_not_supported = property(_make_tif_property(NOT_SUPPORTED))
+    is_bad_id_association = property(_make_tif_property(BAD_ID_ASSOCIATION))
 
     def as_hex_string(self):
         """

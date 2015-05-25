@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-from collections import OrderedDict
 import unittest
+from collections import OrderedDict
 
 import ed25519
 import mock
@@ -11,7 +11,7 @@ from django.contrib.auth import SESSION_KEY, get_user_model
 from django.utils.timezone import now
 
 from ..crypto import HMAC, Ed25519, generate_randomness
-from ..forms import RequestForm, RandomPasswordUserCreationForm
+from ..forms import PasswordLessUserCreationForm, RequestForm
 from ..models import SQRLIdentity, SQRLNut
 from ..utils import Base64, Encoder
 
@@ -498,6 +498,13 @@ class TestRequestForm(test.TestCase):
 
         self.assertIsNone(self.form._clean_session())
 
+    def test_clean_session_user_not_int(self):
+        self.form.session = {
+            SESSION_KEY: 'aaa',
+        }
+
+        self.assertIsNone(self.form._clean_session())
+
     def test_clean_session_no_sqrl_identity(self):
         self.identity.delete()
         self.identity = None
@@ -513,6 +520,16 @@ class TestRequestForm(test.TestCase):
 
         self.form.session = {
             SESSION_KEY: six.text_type(self.user.pk),
+        }
+        self.form.cleaned_data = self.cleaned_data
+
+        with self.assertRaises(forms.ValidationError):
+            self.form._clean_session()
+
+    def test_clean_session_user_code_mismatch(self):
+        self.form.identity = self.identity
+        self.form.session = {
+            SESSION_KEY: six.text_type(self.user.pk + 1),
         }
         self.form.cleaned_data = self.cleaned_data
 
@@ -605,21 +622,22 @@ class TestRequestForm(test.TestCase):
 
 class TestRandomPasswordUserCreationForm(unittest.TestCase):
     def test_init(self):
-        self.assertIn('password1', RandomPasswordUserCreationForm.base_fields)
-        self.assertIn('password2', RandomPasswordUserCreationForm.base_fields)
+        self.assertIn('password1', PasswordLessUserCreationForm.base_fields)
+        self.assertIn('password2', PasswordLessUserCreationForm.base_fields)
 
-        form = RandomPasswordUserCreationForm()
+        form = PasswordLessUserCreationForm()
 
         self.assertNotIn('password1', form.fields)
         self.assertNotIn('password2', form.fields)
 
-    @mock.patch(TESTING_MODULE + '.get_random_string')
-    def test_clean(self, mock_get_random_string):
-        form = RandomPasswordUserCreationForm({'username': 'test'})
+    def test_save(self):
+        form = PasswordLessUserCreationForm({'username': 'test'})
 
         self.assertTrue(form.is_valid())
 
-        self.assertDictEqual(form.cleaned_data, {
-            'username': 'test',
-            'password1': mock_get_random_string.return_value,
-        })
+        user = form.save()
+
+        self.assertEqual(user.username, 'test')
+        self.assertTrue(user.password.startswith('!'))
+
+        user.delete()

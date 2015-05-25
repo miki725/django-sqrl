@@ -5,7 +5,7 @@
 {% block title %}Manage SQRL Identity{% endblock %}
 
 {% block content %}
-    <h1 xmlns="http://www.w3.org/1999/html">Manage SQRL Identity with your account</h1>
+    <h1>Manage SQRL Identity with your account</h1>
 
     {% if not user.sqrl_identity %}
         <p>
@@ -32,15 +32,22 @@
         </p>
     {% endif %}
 
-    <p>
-        {% sqrl as sqrl %}
-        {% sqrl_status_url_script_tag sqrl %}
-        <a href="{{ sqrl.sqrl_url }}">
-            <img src="{% sqrl_qr_image_url sqrl %}">
-        </a>
+    {% sqrl as sqrl %}
+    <form method="get" action="{{ sqrl.sqrl_url }}">
+        <p>
+            {% sqrl as sqrl %}
+            {% sqrl_status_url_script_tag sqrl %}
+            <a href="{{ sqrl.sqrl_url }}">
+                <img src="{% sqrl_qr_image_url sqrl %}">
+            </a>
+        </p>
+
         {# redirect to manage page after successful SQRL transaction #}
         <input type="hidden" name="next" value="{% url 'sqrl:manage' %}">
-    </p>
+
+        <input type="hidden" name="nut" value="{{ sqrl.nut.nonce }}">
+        <input type="submit" value="Manage SQRL">
+    </form>
 {% endblock %}
 
 {% block scripts %}

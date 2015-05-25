@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_static %}
+{% load sqrl %}
+
+{% block title %}Manage SQRL{% endblock %}
+{% block content_title %}<h1>Manage SQRL</h1>{% endblock %}
+
+{% block extrahead %}{{ block.super }}
+    <script src="{% static 'sqrl/sqrl.js' %}"></script>
+{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}"/>
+{% endblock %}
+
+
+{% block userlinks %}
+    {% url 'django-admindocs-docroot' as docsroot %}
+    {% if docsroot %}
+        <a href="{{ docsroot }}">{% trans 'Documentation' %}</a> /
+    {% endif %}
+    {% trans 'Manage SQRL' %} /
+    <a href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; {% trans 'Manage SQRL' %}
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div id="content-main">
+
+        {% if not user.sqrl_identity %}
+            <p>
+                You dont have SQRL identity associated with your account yet.
+                Please use SQRL link/QR code below to associate SQRL identity with your account.
+            </p>
+        {% else %}
+            <p>
+                Congratulations! You already have SQRL identity associated with your account.
+                If you would like to either change or delete existing SQRL identity
+                associated with your account, you can do that by selecting appropriate
+                option in your SQRL client and then using the SQRL link/QR code below.
+            </p>
+
+            <p>
+                <strong>Note:</strong> For both changing or deleting your SQRL identity,
+                you will need to load your SQRL rescue code.
+            </p>
+
+            <p>
+                <strong>Caution:</strong> Normally it is not advised to change or delete
+                your SQRL identity. Usually these operations are only required when
+                SQRL identity is compromised.
+            </p>
+        {% endif %}
+
+        {% sqrl as sqrl %}
+
+        <fieldset class="module aligned">
+            <p>
+                {% sqrl_status_url_script_tag sqrl %}
+                <a href="{{ sqrl.sqrl_url }}">
+                    <img src="{% sqrl_qr_image_url sqrl %}" width="200">
+                </a>
+                {# redirect to manage page after successful SQRL transaction #}
+                <input type="hidden" name="next" value="{% url 'admin-sqrl_manage' %}">
+            </p>
+        </fieldset>
+
+        <form  method="get" action="{{ sqrl.sqrl_url }}" class="sqrl">
+            <div class="submit-row">
+                <input type="hidden" name="nut" value="{{ sqrl.nut.nonce }}">
+                <input type="submit" value="Manage SQRL" class="default" style="float: left;">
+            </div>
+        </form>
+
+    </div>
+{% endblock %}

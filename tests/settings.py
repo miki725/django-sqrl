@@ -3,6 +3,9 @@
 Bare ``settings.py`` for running tests for rest_framework_bulk
 """
 from __future__ import print_function, unicode_literals
+import os
+
+import django
 
 
 DEBUG = True
@@ -27,6 +30,9 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.static',
     'django.core.context_processors.tz',
     'django.contrib.messages.context_processors.messages',
+)
+TEMPLATE_DIRS = (
+    os.path.dirname(django.__file__),
 )
 
 INSTALLED_APPS = (

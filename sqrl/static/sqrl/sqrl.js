@@ -1,16 +1,19 @@
 'use strict';
 
 (function() {
-  var next_input     = document.querySelectorAll('input[name="next"]'),
-      next_url       = next_input.length > 0 ? next_input[0].value : null,
+  var get_next_url   = function() {
+          var input = document.querySelectorAll('input[name="next"]');
+          return input.length > 0 ? input[0].value : null;
+      },
       current_url    = window.location.href,
       sqrl_frequency = 1500,
       sqrl_call      = function() {
         setTimeout(sqrl_handler, sqrl_frequency);
       },
       sqrl_handler   = function() {
-        var request = new XMLHttpRequest(),
-            url     = SQRL_CHECK_URL + '?url=';
+        var request  = new XMLHttpRequest(),
+            url      = SQRL_CHECK_URL + '?url=',
+            next_url = get_next_url();
 
         if (next_url !== null) {
           url = url + encodeURIComponent('?next=' + next_url);
