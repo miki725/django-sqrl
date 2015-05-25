@@ -109,7 +109,7 @@ class Base64Field(forms.CharField):
             return b''
         try:
             return Base64.decode(value)
-        except ValueError:
+        except (ValueError, TypeError):
             raise forms.ValidationError(self.error_messages['base64'])
 
 

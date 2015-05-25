@@ -174,7 +174,7 @@ class RequestForm(forms.Form):
             is_valid_signature = HMAC(self.nut, server).is_signature_valid(
                 Base64.decode(server['mac'])
             )
-        except ValueError:
+        except (ValueError, TypeError):
             is_valid_signature = False
 
         if not is_valid_signature:
