@@ -84,6 +84,8 @@ class SQRLIdentity(models.Model):
         # name conflicts so its easier to rename the model
         # and manually overwrite the table name
         db_table = 'sqrl_identity'
+        verbose_name = 'SQRL Identity'
+        verbose_name_plural = 'SQRL Identities'
 
 
 @python_2_unicode_compatible
@@ -197,6 +199,8 @@ class SQRLNut(models.Model):
     class Meta(object):
         # Explicitly define db_table for clearer table name
         db_table = 'sqrl_nut'
+        verbose_name = 'SQRL Nut'
+        verbose_name_plural = 'SQRL Nuts'
 
     def __str__(self):
         return self.nonce

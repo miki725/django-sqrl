@@ -108,7 +108,7 @@ Now that SQRL is installed in a Django project you can use it in any login page 
 
 The above template will add a QR image as a link which when used with SQRL client, will allow users to authenticate using SQRL.
 
-If you would like to also add explicit button to trigger SQRL client on desktop appliations, you can also use HTML form::
+If you would like to also add explicit button to trigger SQRL client on desktop applications, you can also use HTML form::
 
     {% sqrl as sqrl %}
     <form method="get" action="{{ sqrl.sqrl_url }}">
