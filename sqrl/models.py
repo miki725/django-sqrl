@@ -9,6 +9,7 @@ from .crypto import generate_randomness
 from .managers import SQRLNutManager
 
 
+@python_2_unicode_compatible
 class SQRLIdentity(models.Model):
     """
     SQRL identity associated with a user.
@@ -86,6 +87,12 @@ class SQRLIdentity(models.Model):
         db_table = 'sqrl_identity'
         verbose_name = 'SQRL Identity'
         verbose_name_plural = 'SQRL Identities'
+
+    def __str__(self):
+        if self.user_id:
+            return '{} for {}'.format(self.__class__.__name__, self.user)
+        else:
+            return '{} with idk={}'.format(self.__class__.__name__, self.public_key)
 
 
 @python_2_unicode_compatible
