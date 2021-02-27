@@ -14,10 +14,12 @@ from django.contrib.auth import (
     login,
 )
 from django.core import serializers
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import FormView, TemplateView, View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from .backends import SQRL_MODEL_BACKEND
 from .exceptions import TIF, TIFException
@@ -119,6 +121,10 @@ class SQRLStatusView(View):
     """
     success_url = settings.LOGIN_REDIRECT_URL
 
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super(SQRLStatusView, self).dispatch(request, *args, **kwargs)
+
     def get_success_url(self):
         """
         Get the url to which the user will be redirect to after
@@ -142,7 +148,7 @@ class SQRLStatusView(View):
         else:
             url = self.success_url
 
-        if all([not self.request.user.is_authenticated(),
+        if all([not self.request.user.is_authenticated,
                 SQRL_IDENTITY_SESSION_KEY in self.request.session]):
             return reverse('sqrl:complete-registration') + '?next={}'.format(url)
         else:
@@ -222,6 +228,7 @@ class SQRLAuthView(View):
         self.session = None
         self.is_disabled = False
 
+    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         """
         Standard ``dispatch`` with custom exception handling
@@ -715,7 +722,7 @@ class SQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
 
 
 class AdminSiteSQRLIdentityManagementView(LoginRequiredMixin, TemplateView):
-    template_name = 'admin/auth/user/sqrl_manage.html'
+    template_name = 'sqrl/sqrl_manage.html'
 
     def get_context_data(self, **kwargs):
         context = super(AdminSiteSQRLIdentityManagementView, self).get_context_data(**kwargs)

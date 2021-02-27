@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n admin_static %}
+{% load i18n static %}
 {% load sqrl %}
 
 {% block title %}Manage SQRL{% endblock %}
@@ -62,7 +62,9 @@
 
         <fieldset class="module aligned">
             <p>
-                {% sqrl_status_url_script_tag sqrl %}
+                <script>
+                    var SQRL_CHECK_URL="{{sqrl_status_url}}"
+                </script>
                 <a href="{{ sqrl.sqrl_url }}">
                     <img src="{% sqrl_qr_image_url sqrl %}" width="200">
                 </a>

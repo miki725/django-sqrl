@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function, unicode_literals
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import QueryDict
 
 from .crypto import generate_randomness
@@ -141,7 +141,7 @@ class SQRLInitialization(object):
         """
         return (
             '{scheme}://{host}{url}'
-            ''.format(scheme='sqrl' if self.request.is_secure() else 'qrl',
+            ''.format(scheme='sqrl' if self.request.is_secure() else 'sqrl',
                       host=self.request.get_host(),
                       url=self.url)
         )

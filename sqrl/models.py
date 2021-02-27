@@ -3,13 +3,11 @@ from __future__ import print_function, unicode_literals
 
 from django.conf import settings
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 from .crypto import generate_randomness
 from .managers import SQRLNutManager
 
 
-@python_2_unicode_compatible
 class SQRLIdentity(models.Model):
     """
     SQRL identity associated with a user.
@@ -46,7 +44,7 @@ class SQRLIdentity(models.Model):
         When enabled via flag in SQRL client requests, this should disable all other
         methods of authentication such as username/password.
     """
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='sqrl_identity')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='sqrl_identity', on_delete=models.CASCADE)
     """Foreign key to Django's auth ``User`` object for whom this SQRL identity belongs to."""
 
     public_key = models.CharField(
@@ -95,7 +93,6 @@ class SQRLIdentity(models.Model):
             return '{} with idk={}'.format(self.__class__.__name__, self.public_key)
 
 
-@python_2_unicode_compatible
 class SQRLNut(models.Model):
     """
     Model for storing temporary state for SQRL transactions.

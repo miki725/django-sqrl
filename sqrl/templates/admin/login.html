@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n admin_static %}
+{% load i18n static %}
 {% load sqrl %}
 
 {% block extrastyle %}
@@ -73,6 +73,9 @@
                 </p>
 
                 <p class="img">
+                    <script>
+                        var SQRL_CHECK_URL="{{sqrl_status_url}}"
+                    </script>
                     <a href="{{ sqrl.sqrl_url }}">
                         <img src="{% sqrl_qr_image_url sqrl %}">
                     </a>
@@ -85,7 +88,6 @@
             </div>
         </form>
 
-        {% sqrl_status_url_script_tag sqrl %}
         <script type="text/javascript">
             document.getElementById('id_username').focus()
         </script>
