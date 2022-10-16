@@ -174,7 +174,8 @@ class SQRLStatusView(View):
             This view is restricted to ajax calls as to restrict its
             use from regular forms.
         """
-        if not request.is_ajax():
+        #if not request.is_ajax():
+        if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return HttpResponse(status=405)  # method not allowed
 
         transaction = self.get_object()
