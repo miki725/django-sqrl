@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 
-from django.conf.urls import patterns, url
+from django.urls import re_path
 
 from .views import (
     SQRLAuthView,
@@ -12,13 +12,14 @@ from .views import (
     SQRLStatusView,
 )
 
+app_name="sqrl"
 
-urlpatterns = patterns(
-    '',
-    url(r'^login/$', SQRLLoginView.as_view(), name='login'),
-    url(r'^qr/$', SQRLQRGeneratorView.as_view(), name='qr-image'),
-    url(r'^auth/$', SQRLAuthView.as_view(), name='auth'),
-    url(r'^status/(?P<transaction>[A-Za-z0-9_-]{43})/$', SQRLStatusView.as_view(), name='status'),
-    url(r'^register/$', SQRLCompleteRegistrationView.as_view(), name='complete-registration'),
-    url(r'^manage/$', SQRLIdentityManagementView.as_view(), name='manage'),
-)
+
+urlpatterns = [
+    re_path(r'^login/$', SQRLLoginView.as_view(), name='login'),
+    re_path(r'^qr/$', SQRLQRGeneratorView.as_view(), name='qr-image'),
+    re_path(r'^auth/$', SQRLAuthView.as_view(), name='auth'),
+    re_path(r'^status/(?P<transaction>[A-Za-z0-9_-]{43})/$', SQRLStatusView.as_view(), name='status'),
+    re_path(r'^register/$', SQRLCompleteRegistrationView.as_view(), name='complete-registration'),
+    re_path(r'^manage/$', SQRLIdentityManagementView.as_view(), name='manage'),
+]

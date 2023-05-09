@@ -14,7 +14,9 @@
     {% sqrl as sqrl %}
     <form method="get" action="{{ sqrl.sqrl_url }}">
         <p>
-            {% sqrl_status_url_script_tag sqrl %}
+            <script>
+                var SQRL_CHECK_URL="{% sqrl_status_url srl %}"
+            </script>
             <a href="{{ sqrl.sqrl_url }}">
                 <img src="{% sqrl_qr_image_url sqrl %}">
             </a>

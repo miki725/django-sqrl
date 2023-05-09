@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 import six
 from django import forms
-from django.core.urlresolvers import Resolver404, resolve
+from django.urls import Resolver404, resolve
 from django.core.validators import URLValidator
 from django.http import QueryDict
 
